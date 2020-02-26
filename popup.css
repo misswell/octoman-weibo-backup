@@ -1,0 +1,168 @@
+﻿body {
+    width: 320px;
+}
+
+ul {
+    padding: 2.5% 2.5%;
+    border: 1px solid #CCC;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+ul, li.item {
+    list-style: none;
+    position: relative;
+    margin: 5px;
+    cursor: pointer;
+}
+
+.pic {
+    width: 85px;
+    height: 85px;
+    position: relative;
+}
+
+.count {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    border-radius: 30px;
+    padding: 2px 5px;
+    color: white;
+    background: rgba(0, 0, 0, 0.5);
+    font-size: 8px;
+}
+
+.selected {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+}
+
+.complete {
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    /*transform: translate(-50%,-50%);*/
+    padding: 3px 10px;
+    border-radius: 30px;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    color: white;
+}
+
+a {
+    color: #333;
+    font-weight: bold;
+}
+
+input[type='button'] {
+    margin: 0 10px 0 0;
+    padding: 5px 10px;
+    border: 1px solid transparent;
+    background: #5bc0de;
+    color: white;
+    outline: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 12px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+input.disable {
+    background-color: #CCC;
+    color: white;
+}
+
+.process {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.process li {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.process li.process-li {
+    margin-top: 5px;
+}
+
+.process li .album-info {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.process li .process-pic {
+    width: 40px;
+    height: 40px;
+    margin-right: 5px;
+}
+
+.process li div {
+
+    white-space: nowrap;
+}
+
+.process li .pr {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.tit {
+    padding: 0 2px;
+}
+
+.warning-icon {
+    width: 12px;
+    height: 12px;
+    position: absolute;
+    right: 0px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.warning-more {
+    display: none;
+}
+
+.warning-more div {
+    text-indent: -1.5em;
+    padding-left: 1.5em;
+}
+
+.option-line {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.flex-center {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+.underline{
+    text-decoration:underline ;
+}

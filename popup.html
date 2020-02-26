@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>
+        Blacklist Checking
+    </title>
+    <meta http-equiv="content-type" content="txt/html; charset=utf-8"/>
+    <link rel="stylesheet" type="text/css" href="popup.css"/>
+    <script type="text/javascript" src="jquery/jquery-3.4.1.js"></script>
+    <script type="text/javascript" src="popup.js"></script>
+</head>
+<body>
+<div id="login_suc" style="display: block;">
+    <ul class="process">
+        <div style="position: relative;width:100%;">
+            <span>提示：请勿同时保存多个用户，会限制访问</span>
+            <img src="/img/warning.png" class="warning-icon"></div>
+        <span class="warning-more">
+            <div>1.需要登录微博</div>
+            <div>2.保存过程中不建议操作微博</div>
+            <div>3.每500条微博存为一个html文件,可用Chrome打开</div>
+            <div>4.如想存图到本地，可打开html文件后右键另存为</div>
+            <div>5.微博接口限制，太多可能会下不全</div>
+            <div>6.时间估算1条1秒</div>
+        </span>
+    </ul>
+    <ul class="select-position" hidden><span class="user-list"></span>
+        <span class="user-select"></span></ul>
+    <ul class="name" hidden>当前用户：</ul>
+    <ul class="album-loading">
+        <div id="load-timeout" class="underline"><img src="/img/loading.gif" alt=""></div>
+    </ul>
+    <ul class="album-list">
+
+    </ul>
+    <ul class="option-line">
+        <a href="javascript:;" id="author">问题反馈</a>
+        <input type="button" class="btn" id="stop-all" value="立即停止">
+    </ul>
+</div>
+</body>
+</html>
