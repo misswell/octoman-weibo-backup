@@ -10,18 +10,20 @@
 新浪微博的备份 Chrome 浏览器扩展 （ 插件 ）
 
 ## 使用方法
-- 在 PC 版新浪微博页面 https://weibo.com/ 点击扩展图标，出现的下拉列表中选择需要保存的用户，然后点击保存按钮即可。
+- 在 PC 版新浪微博页面 https://weibo.com/ 点击扩展图标，出现的下拉列表中选择需要保存的用户，然后点击保存按钮
+- 扩展使用示图
 
 <img src="http://blog.liuguofeng.com/wp-content/uploads/2020/02/snipaste_20200215_115052.png" width="700">
-<center>扩展使用示图</center>
+
+- 保存后生成的文件示图
 
 <img src="https://blog.liuguofeng.com/wp-content/uploads/2020/02/snipaste_20200219_173457.png" width="700">
-<center>保存后生成的文件示图</center>
 
-- 生成的HTML文件的CSS样式与图片是在线的，如想完全离线使用，可将HTML文件Chrome打开后右键另存为（全部或单个文件）。
+- 生成的HTML文件的CSS样式与图片是在线的，如想完全离线使用，可将HTML文件Chrome打开后右键另存为（全部或单个文件）
+- 完全离线保存的操作方法示图
 
 <img src="https://blog.liuguofeng.com/wp-content/uploads/2020/02/Snipaste_2020-02-24_12-55-50.png" width="700">
-<center>完全离线保存的操作方法示图</center>
+
 
 ## 其他说明
 - 需要登录微博
@@ -34,6 +36,7 @@
 - 保存的文件如果出现finish代表已经全部完成
 - 经用户反馈炸号微博也可备份，前提是能登陆看到自己的微博
 - 如出现验证失败的提示，请点击验证失败这段文字，然后重试
+- 开发版使用方法见文章中的方法二 https://www.jianshu.com/p/0ce6ab938fcf
 
 ## 更新说明
 v0.1.5

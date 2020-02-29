@@ -28,8 +28,6 @@
   },
   "permissions": [
     "tabs",
-    "activeTab",
-    "notifications",
     "downloads",
     "*://*.weibo.cn/*",
     "*://*.weibo.com/*",
@@ -37,11 +35,7 @@
     "*://*.sina.com/*",
     "*://*.sina.cn/*",
     "*://*.imgram.cn/*",
-    "*://*.liuguofeng.com/*",
-    "contextMenus",
-    "webRequest",
-    "webRequestBlocking",
-    "storage"
+    "*://*.liuguofeng.com/*"
   ],
   "options_page": "/options/options.html",
   "optional_permissions": [],
@@ -52,8 +46,6 @@
       ],
       "js": [
         "jquery/jquery-3.4.1.js",
-        "jquery/jquery.cookie.js",
-        "jquery/jquery.toast.js",
         "utils/config.js",
         "utils/date.js",
         "utils/util.js",
@@ -61,7 +53,6 @@
         "content/listener.js"
       ],
       "css": [
-        "jquery/jquery.toast.css"
       ],
       "run_at": "document_end"
     }
