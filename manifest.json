@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Octoman微博备份",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description":"一键备份微博",
   "background": {
     "scripts": [
@@ -28,6 +28,7 @@
   },
   "permissions": [
     "tabs",
+    "activeTab",
     "downloads",
     "*://*.weibo.cn/*",
     "*://*.weibo.com/*",
@@ -35,7 +36,8 @@
     "*://*.sina.com/*",
     "*://*.sina.cn/*",
     "*://*.imgram.cn/*",
-    "*://*.liuguofeng.com/*"
+    "webRequest",
+    "webRequestBlocking"
   ],
   "options_page": "/options/options.html",
   "optional_permissions": [],

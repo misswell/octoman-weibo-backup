@@ -17,7 +17,50 @@ var events = {
             console.log('sendMessage：wei_fail', info, res)
         });
     },
+    todo: (type, data) => {
+        getCurTab(function (current_tab) {
+            if (current_tab && current_tab[0]) {
+                typeof(chrome.app.isInstalled) !== "undefined" &&
+                chrome.tabs.sendMessage(
+                    current_tab[0],
+                    {type: type, data: data}, function (response) {
+
+                    })
+            }
+        })
+
+    }
 };
+
+
+function getCurTab(callback, timer) {
+    timer = timer ? timer : 1;
+    chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
+        if (tabs && tabs[0] && tabs[0]['id'] && urlCheck(tabs[0]['url'])) {
+            let tabId = tabs[0]['id'];
+            let url = tabs[0]['url'];
+            let status = tabs[0]['status'];
+            let url_domain = getUrlDomain(url);
+            if (status !== 'complete') {
+                // new Promise(function(){
+                setTimeout(() => {
+                    timer++;
+                    if (timer < 5) {
+                        getCurTab(callback, timer);
+                    } else {
+                        callback(false)
+                    }
+                }, 1000 * timer);
+            } else if (/.*?(weibo.com|weibo.cn).*?/.test(url_domain) && status === "complete") {
+                typeof callback === 'function' && callback([tabId, url]);
+            } else {
+                typeof callback === 'function' && callback(false);
+            }
+        } else {
+            typeof callback === 'function' && callback(false)
+        }
+    })
+}
 
 function getCurrentTab(callback = function () {
 }) {
@@ -47,6 +90,20 @@ function getCurrentTab(callback = function () {
     })
 }
 
+//监听页面请求
+chrome.webRequest.onBeforeRequest.addListener(
+    function (details) {
+        var url = details.url;
+        // console.log(url);
+        if (url.indexOf('mblog/') > -1 || url.indexOf('aj/') > -1) {
+            // console.log('chrome.webRequest.addListener1', url, details);
+            events.todo('load_list')
+        }
+    },
+    {urls: ["https://*.weibo.com/*"]},  //监听页面请求,你也可以通过*来匹配。
+    ["blocking"]
+);
+
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     // console.log('onMessage.addListener', request);
     if (request.type === 'current_page') {
@@ -69,7 +126,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         console.log('wei_save');
         let data = request.data;
         let containerid = data.containerid;
-        let user = data.user
+        let user = data.user;
 
         window['total' + containerid] = 0;
         window['num' + containerid] = 0;
@@ -82,7 +139,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             clearTimeout(window['st_id' + containerid]);
             window['st_id' + containerid] = null;
         }
-        st_push(containerid,user);
+        st_push(containerid, user);
         load_start('_save');
         wei_save(data)
     } else if (request.type === 'config_get') {
@@ -94,6 +151,14 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         let data = request.data;
         console.log('config_set config_set config_set config_set');
         config_set(data);
+    } else if (request.type === 'list_done') {
+        let data = request.data;
+        console.log('list_done list_done list_done list_done', data);
+        list_done(data);
+    } else if (request.type === 'get_expand') {
+        let id = request.data;
+        console.log('get_expand get_expand get_expand get_expand', id);
+        get_expand(id);
     }
     return true;
 });
@@ -141,8 +206,57 @@ function user_info(info) {
     })
 }
 
+function get_expand(mid) {
+    if (!mid || mid.length === 0) return;
+    $.post('http://imgram.cn/app/weibo/detail', {'mid': mid}, (res) => {
+        console.log(res);
+        if (res.code === 200) {
+            var html = detail_html(res.data);
+            events.todo('detail_html', {mid: mid, html: html})
+        } else {
+            events.todo('detail_fail', {mid: mid, html: res.message})
+        }
+    }, 'JSON')
+}
 
-function st_push(containerid,user) {
+function list_done(data) {
+    if (!data || data.length === 0) return;
+    $.post('http://imgram.cn/app/weibo/record', {'data': JSON.stringify(data)}, (res) => {
+        console.log(res)
+    }, 'JSON')
+
+}
+
+function detail_html(data) {
+    var html1 = `
+    <div class="WB_expand S_bg1" node-type="feed_list_forwardContent">
+     <div class="WB_info">
+        <a>@${data.name}</a>
+     </div>
+     <div class="WB_text" node-type="feed_list_reason">
+        ${data.text}
+     <div class="WB_expand_media_box" style="display: none;" node-type="feed_list_media_disp"></div>
+     <div class="WB_media_wrap clearfix" node-type="feed_list_media_prev">
+    <div class="media_box">`
+
+    var html_pic = '';
+
+    if (data.pic && data.pic.length > 0) {
+        let pic_list = JSON.parse(data.pic)
+        html_pic += `<ul class="WB_media_a WB_media_a_mn WB_media_a_m9p" >`;
+        for (let i in pic_list) {
+            html_pic += `<li class="WB_pic li_1 S_bg1 S_line2 bigcursor li_focus" >
+                     <img src="${pic_list[i]}" style="width:110px;height:113px;left:0px;top:0px;object-fit: cover;">
+                     </li>`;
+        }
+        html_pic += `</ul>`
+    }
+
+    var html2 = `</ul></div></div></div></div>`;
+    return html1 + html_pic + html2;
+}
+
+function st_push(containerid, user) {
     if (!window['st_id_list']) {
         window['st_id_list'] = [];
     }
@@ -154,13 +268,13 @@ function st_push(containerid,user) {
     });
 
     if (!find) {
-        window['st_id_list'].push({id:containerid,user:user})
+        window['st_id_list'].push({id: containerid, user: user})
     }
 }
 
 
 function st_pop(containerid) {
-    console.log('st_popst_popst_popst_popst_popst_popst_pop',window['st_id_list'],containerid);
+    console.log('st_popst_popst_popst_popst_popst_popst_pop', window['st_id_list'], containerid);
     if (!window['st_id_list']) {
         window['st_id_list'] = [];
         return;
@@ -170,10 +284,10 @@ function st_pop(containerid) {
             return true
         }
     });
-    if(findIndex > -1){
-        window['st_id_list'].splice(findIndex,1)
+    if (findIndex > -1) {
+        window['st_id_list'].splice(findIndex, 1)
     }
-    console.log('findIndex',findIndex,window['st_id_list']);
+    console.log('findIndex', findIndex, window['st_id_list']);
 }
 
 
@@ -185,7 +299,7 @@ function stop_all() {
             item = window['st_id_list'][i];
             clearTimeout(item.id);
             window['stop_now' + item.id] = 1;
-            console.log('itemitemitemitemitemitemitemitemitemitemitem',item);
+            console.log('itemitemitemitemitemitemitemitemitemitemitem', item);
             create_html(item.user, item.id, '_finish');
             window['page' + item.id] = 1;
             window['cards_list' + item.id] = [];
@@ -226,7 +340,7 @@ function wei_save(save_data) {
     // console.log('wei_save start', data);
     $.get(url, data, function (res) {
 
-        if(window['stop_now' + containerid] === 1){
+        if (window['stop_now' + containerid] === 1) {
             return
         }
 
@@ -300,7 +414,8 @@ function wei_save(save_data) {
                 if ((retry_times >= 5) ||
                     (retry_times === 4 && finish_per > 0.85) ||
                     (retry_times === 3 && finish_per > 0.9) ||
-                    (retry_times === 2 && finish_per > 0.95)
+                    (retry_times === 2 && finish_per > 0.92) ||
+                    (retry_times === 1 && finish_per > 0.95)
                 ) {
 
                     create_html(user, containerid, '_finish');
@@ -394,7 +509,7 @@ function create_html(user, containerid, word = '') {
     html += html_head(user.username);
     let list = window['cards_list' + containerid];
 
-    if(!list || list.length === 0){
+    if (!list || list.length === 0) {
         return
     }
     let li;
@@ -417,7 +532,7 @@ function html_div(mblog) {
     if (!mblog) {
         return '';
     }
-    console.log(mblog)
+    // console.log(mblog)
     mblog.text = mblog.text.replace(/="\/\//g, '="https://').replace(/=\'\/\//g, "='https://"
     ).replaceAll('href="/status', 'href="https://m.weibo.cn/status'
     ).replaceAll('href="/n', 'href="https://m.weibo.cn/n'
@@ -536,7 +651,7 @@ function html_head(title) {
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>${title?title:'Document'}</title>
+    <title>${title ? title : 'Document'}</title>
     <link rel="stylesheet" href="https://h5.sinaimg.cn/marvel/v1.4.5/css/card/cards.css">
     <link rel="stylesheet" href="https://h5.sinaimg.cn/marvel/v1.4.5/css/lib/base.css">
     <style>[class*=m-imghold]>a>img {z-index: 0;height: 100%;position: absolute;}</style>
