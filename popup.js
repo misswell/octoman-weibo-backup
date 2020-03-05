@@ -73,11 +73,20 @@ document.addEventListener('DOMContentLoaded', function () {
     $(".warning-icon").mouseleave(function () {
         $(".warning-more").slideUp();
     });
+
+
+    $("#option").click(function () {
+        events.option()
+    });
 });
 
 var bg = chrome.extension.getBackgroundPage();
 
 var events = {
+
+    option: () => {
+        typeof(chrome.app.isInstalled) !== "undefined" && chrome.runtime.sendMessage({type: 'option'})
+    },
         current_page: () => {
             chrome.runtime.sendMessage({type: 'current_page'})
         },
@@ -100,7 +109,7 @@ var events = {
             chrome.runtime.sendMessage({type: data}, function () {
 
             })
-        }
+        },
     }
 
 ;

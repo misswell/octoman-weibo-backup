@@ -6,14 +6,44 @@
     <link rel="stylesheet" type="text/css" href="/jquery/bootstrap.css"/>
     <link rel="stylesheet" type="text/css" href="/options/options.css"/>
     <script type="text/javascript" src="/jquery/jquery-3.4.1.js"></script>
+    <script type="text/javascript" src="/utils/config.js"></script>
+    <script type="text/javascript" src="/utils/common.js"></script>
     <title>test</title>
 </head>
 <body>
-
-<div class="all" id="login_check">
-    <div>nothing</div>
+<div id="alert" class="alert alert-success alert-dismissible" hidden style="margin-top:20px;">
+    <button type="button" class="close" data-dismiss="alert"></button>
+    <strong>保存成功!</strong>
 </div>
-
+<div class="all" id="login_check">
+    <table class="table table-bordered">
+        <tr>
+            <td style="vertical-align: middle">存档间隔</td>
+            <td ><input type="text" class="form-control"  id="per_page" value=""></td>
+            <td ><input class="btn btn-default" type="button" id="per_page_btn" value="保存"></td>
+        </tr>
+        <tr>
+            <td style="vertical-align: middle">转评赞栏</td>
+            <td >
+                <select class="form-control" id="comment_row">
+                    <option value="1">保留</option>
+                    <option value="2">去除</option>
+                </select>
+            </td>
+            <td ><input class="btn btn-default" type="button" id="comment_row_btn" value="保存"></td>
+        </tr>
+        <tr>
+            <td style="vertical-align: middle">预览图片</td>
+            <td >
+                <select class="form-control" id="pic_show">
+                    <option value="1">缩略图</option>
+                    <option value="2">大图</option>
+                </select>
+            </td>
+            <td ><input class="btn btn-default" type="button" id="pic_show_btn" value="保存"></td>
+        </tr>
+    </table>
+</div>
 </body>
 <script src="/options/options.js" type="text/javascript" charset="utf-8"></script>
 </html>

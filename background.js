@@ -111,6 +111,8 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             console.log('current_page', res);
             sendResponse(res)
         })
+    } else if (request.type === 'option') {
+        chrome.runtime.openOptionsPage();
     } else if (request.type === 'last_process') {
         let process_data = window['last_process'] || null;
         if (process_data) {
@@ -370,13 +372,26 @@ function wei_save(save_data) {
                             wei_detail(item.mblog.idstr, containerid);
                         }, d_time * 2000);
                     }
+
+                    if(item.mblog && item.mblog.retweeted_status && item.mblog.retweeted_status.text.indexOf('全文') > -1){
+                        d_time++;
+                        setTimeout(function () {
+                            wei_detail(item.mblog.retweeted_status.idstr, containerid);
+                        }, d_time * 2000);
+
+                    }
                 });
 
                 window['cards_list' + containerid] = [...cards_list, ...cards_sim];
                 window['page' + containerid] = page + 1;
 
-                if (window['cards_list' + containerid].length > 500) {
+                if(window['cards_list' + containerid].length >= config_get(PER_PAGE)){
+                    setTimeout(function () {
+                        create_html(user, containerid);
+                    }, 3000 + d_time * 2000);
+                }
 
+                if (window['cards_list' + containerid].length >= 500) {
                     events.wei_process({
                         total: window['total' + containerid],
                         num: window['num' + containerid],
@@ -384,10 +399,6 @@ function wei_save(save_data) {
                         name: user.username,
                         avatar: window['avatar' + user.uid]
                     });
-
-                    setTimeout(function () {
-                        create_html(user, containerid);
-                    }, 5000);
 
                     window['st_id' + containerid] = setTimeout(function () {
                         wei_save(save_data);
@@ -494,12 +505,21 @@ function long_replace_text(id, long, containerid) {
     let index = window['cards_list' + containerid].findIndex((item) => {
         if (item.idstr === id) {
             return true;
+        }else if(item.retweeted_status && item.retweeted_status.idstr === id){
+            return true;
         }
     });
     if (index > -1) {
-        let detail = window['cards_list' + containerid][index];
-        detail['text'] = long;
-        window['cards_list' + containerid][index] = detail;
+        let tmp_item = window['cards_list' + containerid][index];
+        if(tmp_item.idstr === id){
+            let detail = window['cards_list' + containerid][index];
+            detail['text'] = long;
+            window['cards_list' + containerid][index] = detail;
+        }else if(tmp_item.retweeted_status && tmp_item.retweeted_status.idstr === id){
+            let re_detail = window['cards_list' + containerid][index]['retweeted_status'];
+            re_detail['text'] = long;
+            window['cards_list' + containerid][index]['retweeted_status'] = re_detail;
+        }
     }
 }
 
@@ -532,6 +552,11 @@ function html_div(mblog) {
     if (!mblog) {
         return '';
     }
+
+    var comment = config_get(COMMENT_ROW);
+    var picture = config_get(PIC_SHOW);
+
+
     // console.log(mblog)
     mblog.text = mblog.text.replace(/="\/\//g, '="https://').replace(/=\'\/\//g, "='https://"
     ).replaceAll('href="/status', 'href="https://m.weibo.cn/status'
@@ -569,15 +594,16 @@ function html_div(mblog) {
                 <ul class="m-auto-list">`;
 
         for (let i in mblog.pics) {
+            var pic_large1 = mblog.pics[i].large && mblog.pics[i].large.url;
+            var pic_thumb1 = mblog.pics[i].url;
             mps += `<li class="m-auto-box">
                         <div class="m-img-box m-imghold-square">
-                            <a target="_blank" href="${mblog.pics[i].large && mblog.pics[i].large.url}">
-                                <img src="${mblog.pics[i].url}">
+                            <a target="_blank" href="${pic_large1}">
+                                <img src="${picture==='1'?pic_thumb1:pic_large1}">
                             </a>
                         </div>
                     </li>`;
         }
-
         mp2 = `</ul></div>`
     }
 
@@ -605,10 +631,12 @@ function html_div(mblog) {
                         <ul class="m-auto-list">`
 
             for (let i in rtw.pics) {
+                var pic_large = rtw.pics[i].large && rtw.pics[i].large.url;
+                var pic_thumb = rtw.pics[i].url;
                 rtps += `<li class="m-auto-box">
                             <div class="m-img-box m-imghold-square">
-                                <a target="_blank" href="${rtw.pics[i].large && rtw.pics[i].large.url}">
-                                    <img src="${rtw.pics[i].url}">
+                                <a target="_blank" href="${pic_large}">
+                                    <img src="${picture==='1'?pic_thumb:pic_large}">
                                 </a>
                             </div>
                         </li>`;
@@ -622,8 +650,11 @@ function html_div(mblog) {
         rt2 = `</div>`;
     }
 
-    let bottom = `</article>
-                    <footer class="m-ctrl-box m-box-center-a">
+
+    let bottom1 = `</article>`
+    let comment_row = '';
+    if (comment === '1') {
+        comment_row = `<footer class="m-ctrl-box m-box-center-a">
                         <div class="m-diy-btn m-box-col m-box-center m-box-center-a">
                             <i class="m-font m-font-forward"></i>
                             <h4>${mblog.reposts_count}</h4></div>
@@ -635,12 +666,15 @@ function html_div(mblog) {
                         <div class="m-diy-btn m-box-col m-box-center m-box-center-a">
                             <i class="m-icon m-icon-like"></i>
                             <h4>${mblog.attitudes_count}</h4></div>
-                    </footer>
-                </div>
+                    </footer>`;
+    }
+
+
+    let bottom2 = `</div>
             </div>
         </div>`;
 
-    return main1 + mp1 + mps + mp2 + main2 + rt1 + rtp1 + rtps + rtp2 + rt2 + bottom;
+    return main1 + mp1 + mps + mp2 + main2 + rt1 + rtp1 + rtps + rtp2 + rt2 + bottom1 + comment_row + bottom2;
 }
 
 function html_head(title) {
@@ -676,3 +710,17 @@ function download(filename, content, contentType) {
     a.download = filename;
     a.click();
 }
+
+function default_func(name, val) {
+    if (config_get(name) === null) {
+        config_set({[name]: val});
+    }
+}
+
+function default_option() {
+    default_func(PER_PAGE, '500');
+    default_func(COMMENT_ROW, '1');//1显示2不显示;
+    default_func(PIC_SHOW, '1')//1小图2大图;
+}
+
+default_option();
