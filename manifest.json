@@ -27,14 +27,8 @@
     "default_popup": "popup.html"
   },
   "permissions": [
-    "tabs",
-    "activeTab",
-    "downloads",
     "*://*.weibo.cn/*",
     "*://*.weibo.com/*",
-    "*://*.sina.com.cn/*",
-    "*://*.sina.com/*",
-    "*://*.sina.cn/*",
     "*://*.imgram.cn/*",
     "webRequest",
     "webRequestBlocking"

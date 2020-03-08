@@ -391,19 +391,19 @@ function wei_save(save_data) {
                     }, 3000 + d_time * 2000);
                 }
 
-                if (window['cards_list' + containerid].length >= 500) {
-                    events.wei_process({
-                        total: window['total' + containerid],
-                        num: window['num' + containerid],
-                        tip: "自动休息2分钟",
-                        name: user.username,
-                        avatar: window['avatar' + user.uid]
-                    });
-
-                    window['st_id' + containerid] = setTimeout(function () {
-                        wei_save(save_data);
-                    }, 2 * 60 * 1000);
-                } else {
+                // if (window['cards_list' + containerid].length >= 500) {
+                //     events.wei_process({
+                //         total: window['total' + containerid],
+                //         num: window['num' + containerid],
+                //         tip: "自动休息2分钟",
+                //         name: user.username,
+                //         avatar: window['avatar' + user.uid]
+                //     });
+                //
+                //     window['st_id' + containerid] = setTimeout(function () {
+                //         wei_save(save_data);
+                //     }, 2 * 60 * 1000);
+                // } else {
 
                     events.wei_process({
                         total: window['total' + containerid],
@@ -416,7 +416,7 @@ function wei_save(save_data) {
                     window['st_id' + containerid] = setTimeout(function () {
                         wei_save(save_data);
                     }, (DELAY_PAGE + Math.random() * 4) * 1000 + d_time * 2000);
-                }
+                // }
 
             } else {
                 window['retry' + containerid]++;
