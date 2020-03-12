@@ -179,7 +179,8 @@ function load_list(){
                 video:video,
                 ex:ex,
             };
-            list_format.push(sim)
+            // list_format.push(sim)
+            ex['text'] && list_format.push(ex)
         });
 
         if(window['temp_list'] && JSON.stringify(window['temp_list']) === JSON.stringify(util.array_column(list_format,'mid'))){

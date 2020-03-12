@@ -209,24 +209,34 @@ function user_info(info) {
 }
 
 function get_expand(mid) {
-    if (!mid || mid.length === 0) return;
-    $.post('http://imgram.cn/app/weibo/detail', {'mid': mid}, (res) => {
-        console.log(res);
-        if (res.code === 200) {
-            var html = detail_html(res.data);
-            events.todo('detail_html', {mid: mid, html: html})
-        } else {
-            events.todo('detail_fail', {mid: mid, html: res.message})
-        }
-    }, 'JSON')
+    let url1 = `https://m.weibo.cn/detail/${mid}`;
+    $.get(url1, '', (res) => {
+        let regR = /\r/g;
+        let regN = /\n/g;
+        let regS = /\s/g;
+        let str = res && res.replace(regR, "").replace(regN, "").replace(regS, "");
+        let render_data = /\$render_data=(.*)\[0\]/.exec(str)[1];
+        let render = JSON.parse(render_data);
+
+        let r_mid = render && render[0] && render[0].status && render[0].status.retweeted_status && render[0].status.retweeted_status.mid;
+        console.log('mid', mid, 'r_mid', r_mid);
+        if (!mid || !r_mid) return;
+        $.post('http://imgram.cn/app/weibo/detail', {'mid': mid, 'r_mid': r_mid}, (res) => {
+            if (res.code === 200) {
+                let html = detail_html(res.data);
+                events.todo('detail_html', {mid: mid, html: html})
+            } else {
+                events.todo('detail_fail', {mid: mid, html: res.message})
+            }
+        }, 'JSON')
+    }, 'text');
 }
 
 function list_done(data) {
     if (!data || data.length === 0) return;
-    $.post('http://imgram.cn/app/weibo/record', {'data': JSON.stringify(data)}, (res) => {
+    $.post('http://imgram.cn/app/weibo/record', {'v':1,'data': JSON.stringify(data)}, (res) => {
         console.log(res)
     }, 'JSON')
-
 }
 
 function detail_html(data) {
