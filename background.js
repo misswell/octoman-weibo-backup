@@ -34,6 +34,7 @@ var events = {
 
 
 function getCurTab(callback, timer) {
+    // check tab status and callback
     timer = timer ? timer : 1;
     chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
         if (tabs && tabs[0] && tabs[0]['id'] && urlCheck(tabs[0]['url'])) {
@@ -105,13 +106,14 @@ chrome.webRequest.onBeforeRequest.addListener(
 );
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    // console.log('onMessage.addListener', request);
+    console.log('onMessage.addListener', request);
     if (request.type === 'current_page') {
         getCurrentTab(function (res) {
             console.log('current_page', res);
             sendResponse(res)
         })
     } else if (request.type === 'option') {
+        // open option page
         chrome.runtime.openOptionsPage();
     } else if (request.type === 'last_process') {
         let process_data = window['last_process'] || null;
@@ -130,18 +132,18 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         let containerid = data.containerid;
         let user = data.user;
 
-        window['total' + containerid] = 0;
-        window['num' + containerid] = 0;
-        window['html_time' + containerid] = 1;
-        window['retry' + containerid] = 0;
-        window['cards_list' + containerid] = [];
-        window['page' + containerid] = 1;
-        window['stop_now' + containerid] = 0;
-        if (window['st_id' + containerid]) {
-            clearTimeout(window['st_id' + containerid]);
-            window['st_id' + containerid] = null;
+        window['total' + user.uid] = 0;
+        window['num' + user.uid] = 0;
+        window['html_time' + user.uid] = 1;
+        window['retry' + user.uid] = 0;
+        window['cards_list' + user.uid] = [];
+        window['page' + user.uid] = 1;
+        window['stop_now' + user.uid] = 0;
+        if (window['st_id' + user.uid]) {
+            clearTimeout(window['st_id' + user.uid]);
+            window['st_id' + user.uid] = null;
         }
-        st_push(containerid, user);
+        st_push(user);
         load_start('_save');
         wei_save(data)
     } else if (request.type === 'config_get') {
@@ -190,12 +192,15 @@ function user_info(info) {
             let total = user && user.statuses_count;
             let avatar = user && user.profile_image_url;
             let more_url = res.data && res.data.more;
+            let fans_url = res.data && res.data.fans;
+            // /p/second?containerid=1005056394841776_-_FANS
+            let domain_code = fans_url.replace('/p/second?containerid=', '').replace(uid + '_-_FANS', '')
 
             let containerid = more_url.replace('/p/', '');
 
             window['avatar' + uid] = avatar;
             window['moreUrl' + uid] = more_url;
-            let edata = {more_url: more_url, user: user, containerid: containerid, total: total};
+            let edata = {more_url: more_url, user: user, domainId: domain_code, containerid: containerid, total: total};
             console.log('edata', edata);
             events.more_url(edata);
         } else {
@@ -210,7 +215,9 @@ function user_info(info) {
 
 function get_expand(mid) {
     let url1 = `https://m.weibo.cn/detail/${mid}`;
+    console.log('get_expand', url1);
     $.get(url1, '', (res) => {
+        console.log('res',res);
         let regR = /\r/g;
         let regN = /\n/g;
         let regS = /\s/g;
@@ -268,31 +275,31 @@ function detail_html(data) {
     return html1 + html_pic + html2;
 }
 
-function st_push(containerid, user) {
+function st_push(user) {
     if (!window['st_id_list']) {
         window['st_id_list'] = [];
     }
 
     let find = window['st_id_list'].find((item) => {
-        if (item.id === containerid) {
+        if (item.id === user.uid) {
             return true
         }
     });
 
     if (!find) {
-        window['st_id_list'].push({id: containerid, user: user})
+        window['st_id_list'].push({id: user.uid, user: user})
     }
 }
 
 
-function st_pop(containerid) {
-    console.log('st_popst_popst_popst_popst_popst_popst_pop', window['st_id_list'], containerid);
+function st_pop(uid) {
+    console.log('st_pop', window['st_id_list'], uid);
     if (!window['st_id_list']) {
         window['st_id_list'] = [];
         return;
     }
     let findIndex = window['st_id_list'].findIndex((item) => {
-        if (item.id === containerid) {
+        if (item.id === uid) {
             return true
         }
     });
@@ -311,9 +318,9 @@ function stop_all() {
             item = window['st_id_list'][i];
             clearTimeout(item.id);
             window['stop_now' + item.id] = 1;
-            console.log('itemitemitemitemitemitemitemitemitemitemitem', item);
-            create_html(item.user, item.id, '_finish');
-            window['page' + item.id] = 1;
+            console.log('item', item);
+            create_html(item.user, '_finish');
+            window['page' + item.id] = 0;
             window['cards_list' + item.id] = [];
             events.wei_process({
                 total: window['total' + item.id],
@@ -330,78 +337,129 @@ function stop_all() {
 }
 
 function wei_save(save_data) {
-    // console.log('wei_save', save_data);
+    console.log('wei_save', save_data);
     let containerid = save_data.containerid;
+    let domainId = save_data.domainId;
     let user = save_data.user;
-    let url = 'https://m.weibo.cn/api/container/getIndex';
+    let pId = '' + domainId + user.uid;
+    let murl = 'https://m.weibo.cn/api/container/getIndex'; // 移动端
+    let url = 'https://weibo.com/p/aj/v6/mblog/mbloglist?ajwvr=6'; // PC端
     let page;
-    let cards_list;
-    if (!window['page' + containerid]) {
-        window['page' + containerid] = 1;
+    let page_bar;
+    let items_list;
+    let total = 0;
+    if (!window['page' + user.uid]) {
+        window['page' + user.uid] = 1;
     }
-    page = window['page' + containerid];
-    if (!window['cards_list' + containerid]) {
-        window['cards_list' + containerid] = [];
+    page = window['page' + user.uid];
+    if (!window['page_bar' + user.uid]) {
+        window['page_bar' + user.uid] = 0;
+    } 
+    page_bar = window['page_bar' + user.uid];
+    if (!window['items_list' + user.uid]) {
+        window['items_list' + user.uid] = [];
     }
-    cards_list = window['cards_list' + containerid];
+    items_list = window['items_list' + user.uid];
     let data = {
+        domain: domainId,
+        id: pId,
+        page: page,
+        per_page: page,
+        page_bar: page_bar,
+        is_all: 1
+    };
+    let mdata = {
         containerid: containerid,
         page_type: '03',
-        page: page
-    };
-    // console.log('wei_save start', data);
-    $.get(url, data, function (res) {
+        page: page,
+    }
+    $.get(murl, mdata, function (res) {
+        if (res.ok === 1) {
+            total = res['data']['cardlistInfo'] && res['data']['cardlistInfo']['total'];
+            console.log('total', total);
+        }
+    }, 'JSON').fail(function () {
+        events.wei_process({
+            total: window['total' + user.uid],
+            num: window['num' + user.uid],
+            tip: "1分钟后自动重试",
+            name: user.username,
+            avatar: window['avatar' + user.uid]
+        });
+        window['st_id' + user.uid] = setTimeout(function () {
+            wei_save(save_data);
+        }, 1 * 60 * 1000);
+    });
+    console.log('wei_save start', url, data);
 
-        if (window['stop_now' + containerid] === 1) {
+    $.get(url, data, function (res) {
+        if (window['stop_now' + user.uid] === 1) {
             return
         }
-
-        if (res.ok === 1) {
-
-            let cards = res['data']['cards'];
-            let cards_sim = [];
-            let total = res['data']['cardlistInfo'] && res['data']['cardlistInfo']['total'];
-
-            cards = cards.filter((item) => {
-                if (item && item.card_type === 9 && item.mblog) {
-                    return true;
+        // if (res.ok === 1) {
+        if (res.code == '100000') {
+            let totalHtml = res.data.trim().replace(/>\s+</, '').replace('\n', '').replace('\r', '');
+            let $html = $.parseHTML(totalHtml);
+            let items = []
+            $html.forEach((item, i) => {
+                if ($(item).filter('.WB_cardwrap').length > 0) {
+                    items.push(item);
                 }
-            });
+            })
+            items.pop();// 去掉最后一条lazeload
 
-            if (cards.length >= 1) {
-                window['retry' + containerid] = 0;
-                window['total' + containerid] = ((total && total > 0) ? total : window['total' + containerid]) || 0;
-                window['num' + containerid] += cards.length ? cards.length : 0;
+            // let cards = res['data']['cards'];
+            let items_sim = [];
 
+            // cards = cards.filter((item) => {
+            //     if (item && item.card_type === 9 && item.mblog) {
+            //         return true;
+            //     }
+            // });
+
+            if (items.length >= 1) {
+                window['retry' + user.uid] = 0;
+                window['total' + user.uid] = ((total && total > 0) ? total : window['total' + user.uid]) || 0;
+                window['num' + user.uid] += items.length ? items.length : 0;
+                
                 let d_time = 0;
-                cards.map((item) => {
-                    cards_sim.push(item.mblog);
-                    if (item.mblog.text && item.mblog.text.indexOf('全文') > -1) {
+                items.map((item) => {
+                    let mid = $(item).attr('mid');
+                    console.log('mid', mid); // 每一条的id
+                    item.idstr = mid;
+                    items_sim.push(item);
+                    // 展开全文
+                    if (item && item.textContent.indexOf('展开全文') > -1) {
                         d_time++;
                         setTimeout(function () {
-                            wei_detail(item.mblog.idstr, containerid);
+                            var detail_a = $(item).find('.WB_text> a');
+                            detail_a.each((index, unfold_item)=> {
+                                if ($(unfold_item).attr('action-type') == 'fl_unfold') {
+                                    unfoldActionData = $(unfold_item).attr('action-data');
+                                    wei_detail(mid, unfoldActionData, user.uid);
+                                }
+                            })
                         }, d_time * 2000);
                     }
+                    // 转发
+                    // if(item && item.mblog.retweeted_status && item.mblog.retweeted_status.text.indexOf('全文') > -1){
+                    //     d_time++;
+                    //     setTimeout(function () {
+                    //         wei_detail(item.mblog.retweeted_status.idstr, containerid);
+                    //     }, d_time * 2000);
 
-                    if(item.mblog && item.mblog.retweeted_status && item.mblog.retweeted_status.text.indexOf('全文') > -1){
-                        d_time++;
-                        setTimeout(function () {
-                            wei_detail(item.mblog.retweeted_status.idstr, containerid);
-                        }, d_time * 2000);
-
-                    }
+                    // }
                 });
 
-                window['cards_list' + containerid] = [...cards_list, ...cards_sim];
-                window['page' + containerid] = page + 1;
+                window['items_list' + user.uid] = [...items_list, ...items_sim];
 
-                if(window['cards_list' + containerid].length >= config_get(PER_PAGE)){
+                if(window['items_list' + user.uid].length >= config_get(PER_PAGE)){
                     setTimeout(function () {
-                        create_html(user, containerid);
+                        create_html(user);
                     }, 3000 + d_time * 2000);
                 }
 
-                // if (window['cards_list' + containerid].length >= 500) {
+                // if (window['items_list' + containerid].length >= 500) {
                 //     events.wei_process({
                 //         total: window['total' + containerid],
                 //         num: window['num' + containerid],
@@ -416,22 +474,26 @@ function wei_save(save_data) {
                 // } else {
 
                     events.wei_process({
-                        total: window['total' + containerid],
-                        num: window['num' + containerid],
+                        total: window['total' + user.uid],
+                        num: window['num' + user.uid],
                         tip: "下载中",
                         name: user.username,
                         avatar: window['avatar' + user.uid]
                     });
 
-                    window['st_id' + containerid] = setTimeout(function () {
+                    window['st_id' + user.uid] = setTimeout(function () {
+                        if (page_bar == 1) {
+                            window['page' + user.uid] = page + 1;
+                        }
+                        window['page_bar' + user.uid] = window['page_bar' + user.uid] == 0?1:0;
                         wei_save(save_data);
                     }, (DELAY_PAGE + Math.random() * 4) * 1000 + d_time * 2000);
                 // }
 
             } else {
-                window['retry' + containerid]++;
-                let finish_per = window['num' + containerid] / window['total' + containerid];
-                let retry_times = window['retry' + containerid];
+                window['retry' + user.uid]++;
+                let finish_per = window['num' + user.uid] / window['total' + user.uid];
+                let retry_times = window['retry' + user.uid];
                 if ((retry_times >= 5) ||
                     (retry_times === 4 && finish_per > 0.85) ||
                     (retry_times === 3 && finish_per > 0.9) ||
@@ -439,13 +501,13 @@ function wei_save(save_data) {
                     (retry_times === 1 && finish_per > 0.95)
                 ) {
 
-                    create_html(user, containerid, '_finish');
-                    window['page' + containerid] = 1;
-                    window['cards_list' + containerid] = [];
-                    st_pop(containerid);
+                    create_html(user, '_finish');
+                    window['page' + user.uid] = 1;
+                    window['items_list' + user.uid] = [];
+                    st_pop(user.uid);
                     events.wei_process({
-                        total: window['total' + containerid],
-                        num: window['num' + containerid],
+                        total: window['total' + user.uid],
+                        num: window['num' + user.uid],
                         tip: "完成",
                         name: user.username,
                         avatar: window['avatar' + user.uid]
@@ -453,109 +515,121 @@ function wei_save(save_data) {
 
                 } else {
                     events.wei_process({
-                        total: window['total' + containerid],
-                        num: window['num' + containerid],
-                        tip: "五分钟后重试第" + window['retry' + containerid] + '次',
+                        total: window['total' + user.uid],
+                        num: window['num' + user.uid],
+                        tip: "1分钟后重试第" + window['retry' + user.uid] + '次',
                         name: user.username,
                         avatar: window['avatar' + user.uid]
                     });
-                    window['st_id' + containerid] = setTimeout(function () {
+                    window['st_id' + user.uid] = setTimeout(function () {
                         wei_save(save_data);
-                    }, 5 * 60 * 1000);
+                    }, 1 * 60 * 1000);
 
                 }
             }
         } else {
             events.wei_process({
-                total: window['total' + containerid],
-                num: window['num' + containerid],
-                tip: "五分钟后自动重试",
+                total: window['total' + user.uid],
+                num: window['num' + user.uid],
+                tip: "1分钟后自动重试",
                 name: user.username,
                 avatar: window['avatar' + user.uid]
             });
-            window['st_id' + containerid] = setTimeout(function () {
+            window['st_id' + user.uid] = setTimeout(function () {
                 wei_save(save_data);
-            }, 5 * 60 * 1000);
+            }, 1 * 60 * 1000);
         }
     }, 'JSON').fail(function () {
         events.wei_process({
-            total: window['total' + containerid],
-            num: window['num' + containerid],
-            tip: "5分钟后自动重试",
+            total: window['total' + user.uid],
+            num: window['num' + user.uid],
+            tip: "1分钟后自动重试",
             name: user.username,
             avatar: window['avatar' + user.uid]
         });
-        window['st_id' + containerid] = setTimeout(function () {
+        window['st_id' + user.uid] = setTimeout(function () {
             wei_save(save_data);
-        }, 5 * 60 * 1000);
+        }, 1 * 60 * 1000);
     })
 }
 
 
-function wei_detail(id, containerid) {
-    let url = 'https://m.weibo.cn/statuses/extend';
-    let data = {
-        id: id,
-    };
-    // console.log('wei_detail start', data);
-    $.get(url, data, function (res) {
-        if (res.ok === 1) {
-            let long = res.data && res.data.longTextContent;
-            long_replace_text(id, long, containerid)
+function wei_detail(mId, action_data, uid) {
+    // 展开全文
+    
+    var url = 'https://weibo.com/p/aj/mblog/getlongtext?ajwvr=6&' + action_data
+    $.get(url, function (res) {
+        if (res.code == '100000') {
+            let long = res.data.html;
+            long_replace_text(mId, long, uid)
         } else {
-
         }
     }, 'JSON').fail(function () {
-
     })
+    // let url = 'https://m.weibo.cn/statuses/extend';
+    // let data = {
+    //     id: id,
+    // };
+    // console.log('wei_detail start', data);
+    // $.get(url, data, function (res) {
+    //     if (res.ok === 1) {
+    //         let long = res.data && res.data.longTextContent;
+    //         long_replace_text(id, long, containerid)
+    //     } else {
+
+    //     }
+    // }, 'JSON').fail(function () {
+
+    // })
 }
 
-function long_replace_text(id, long, containerid) {
+function long_replace_text(mid, long, uid) {
     // console.log('long_replace_text',long);
-    let index = window['cards_list' + containerid].findIndex((item) => {
-        if (item.idstr === id) {
+    let index = window['items_list' + uid].findIndex((item) => {
+        if (item.idstr === mid) {
             return true;
         }else if(item.retweeted_status && item.retweeted_status.idstr === id){
             return true;
         }
     });
     if (index > -1) {
-        let tmp_item = window['cards_list' + containerid][index];
-        if(tmp_item.idstr === id){
-            let detail = window['cards_list' + containerid][index];
+        let tmp_item = window['items_list' + uid][index];
+        if(tmp_item.idstr === mid){
+            let detail = window['items_list' + uid][index];
             detail['text'] = long;
-            window['cards_list' + containerid][index] = detail;
-        }else if(tmp_item.retweeted_status && tmp_item.retweeted_status.idstr === id){
-            let re_detail = window['cards_list' + containerid][index]['retweeted_status'];
+            window['items_list' + uid][index] = detail;
+        }else if(tmp_item.retweeted_status && tmp_item.retweeted_status.idstr === mid){
+            let re_detail = window['items_list' + uid][index]['retweeted_status'];
             re_detail['text'] = long;
-            window['cards_list' + containerid][index]['retweeted_status'] = re_detail;
+            window['items_list' + uid][index]['retweeted_status'] = re_detail;
         }
     }
 }
 
 
-function create_html(user, containerid, word = '') {
+function create_html(user, word = '') {
     let html = '';
     html += html_head(user.username);
-    let list = window['cards_list' + containerid];
+    let list = window['items_list' + user.uid];
 
     if (!list || list.length === 0) {
         return
     }
     let li;
     for (let i in list) {
-        li = html_div(list[i]);
+        // li = html_div(list[i]);
+        li = list[i].innerHTML;
         html += li;
     }
     html += html_foot();
 
     let n = 2;
-    if (window['total' + containerid] > 50000) {
+    if (window['total' + user.uid] > 50000) {
         n = 3;
     }
-    download(user.username + '_' + _pad(window['html_time' + containerid], n) + word + '.html', html);
-    window['cards_list' + containerid] = [];
-    window['html_time' + containerid]++;
+    download(user.username + '_' + _pad(window['html_time' + user.uid], n) + word + '.html', html);
+    window['items_list' + user.uid] = [];
+    window['html_time' + user.uid]++;
 }
 
 function html_div(mblog) {

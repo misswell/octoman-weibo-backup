@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
-  "name": "Octoman微博备份",
-  "version": "0.1.8",
+  "name": "Octoman微博备份New",
+  "version": "0.1.9",
   "description":"一键备份微博",
   "background": {
     "scripts": [

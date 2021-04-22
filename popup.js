@@ -36,14 +36,15 @@ document.addEventListener('DOMContentLoaded', function () {
         $('.album-list').hide();
         events.user_info({uid: uid2, name: name2})
     });
-
+    // save btn
     $('body').on('click', '.wei-save', function () {
         let containerid = $(this).data('containerid');
         let uid = $(this).data('uid');
+        let domainId = $(this).data('domainid');
         let username = $(this).data('username');
         $(this).addClass('disable');
         $(this).removeClass('wei-save');
-        events.wei_save({containerid: containerid, user: {uid: uid, username: username}});
+        events.wei_save({containerid: containerid, domainId: domainId, user: {uid: uid, username: username}}); // domain pageId
     });
 
     $("#stop-all").click(function () {
@@ -56,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     $('body').on('click', '#load-timeout', function () {
+        // go to weibo page to verify
         window.open('https://m.weibo.cn')
     });
 
@@ -100,6 +102,7 @@ var events = {
 
             })
         },
+        // show process on popup
         last_process: () => {
             chrome.runtime.sendMessage({type: 'last_process'}, function () {
 
@@ -115,6 +118,7 @@ var events = {
 ;
 
 chrome.runtime.onMessage.addListener(function (res, sender, sendResponse) {
+    // handle msg and show in popup
     console.log('popup onMessage Listener', res);
     if (res && res.type === 'more_url') {
         let data = res.data;
@@ -123,10 +127,11 @@ chrome.runtime.onMessage.addListener(function (res, sender, sendResponse) {
 
         $('.name').html('<span class="to-album" data-alid="' + user.id + '">当前用户：' + user.screen_name + ' UID：' + user.id + '</span>');
 
-
+        // show save btn
         $('.album-list').html('<input type="button" class="wei-save" ' +
             'data-containerid="' + containerid + '"  ' +
             'data-uid="' + user.id + '" ' +
+            'data-domainid="' + data.domainId + '" ' +
             'data-username="' + user.screen_name + '" ' +
             'value="保存">').show();
 

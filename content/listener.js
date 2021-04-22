@@ -1,5 +1,6 @@
+// auto run 
 chrome.runtime.onMessage.addListener(function (res, sender, sendResponse) {
-    //console.log('common onMessage Listener', res);
+    console.log('common onMessage Listener', res);
     if(res){
         if (res.type === 'tabs') {
             let url = res.data.url;
@@ -8,7 +9,7 @@ chrome.runtime.onMessage.addListener(function (res, sender, sendResponse) {
             console.log('domain is', domain,'param is',param);
             wb_info();
         } else if(res.type === 'load_list'){
-            load_list()
+            // load_list()
         } else if(res.type === 'detail_html'){
             detail_html(res.data)
         }else if(res.type === 'detail_fail'){
@@ -92,7 +93,7 @@ function detail_fail(data){
     $('#empty'+mid).find('.empty_expand_word').html(html).removeClass('empty_expand_word');
 }
 function load_list(){
-    //console.log('load_list');
+    console.log('load_list');
     if(window['load_stid']){
         clearTimeout(window['load_stid']);
     }
@@ -100,7 +101,6 @@ function load_list(){
         var list = $('.WB_feed .WB_cardwrap');
         var list_format = [];
         list.each((index,item)=>{
-
             //正文
             var text = $.trim($(item).find('.WB_detail>.WB_text').html());
             text = text_format(text)
@@ -113,6 +113,7 @@ function load_list(){
             var usercard = $(item).find('.WB_detail>.WB_info a').attr('usercard');
             var uatrack = $(item).find('.WB_detail>.WB_info a').attr('suda-uatrack');
             var uid = usercard2uid(usercard);
+
 
             //图片
             var pic = [];
@@ -128,7 +129,9 @@ function load_list(){
                 img && video.push(img)
             });
 
+            // 转发的引用部分
             var expand = $(item).find('.WB_detail>.WB_feed_expand');
+            console.log('expand', expand);
             var ex = {};
             if(expand){
                 ex['text'] = $.trim($(expand).find('.WB_expand>.WB_text').html());
@@ -179,6 +182,7 @@ function load_list(){
                 video:video,
                 ex:ex,
             };
+            console.log("sim", sim);
             // list_format.push(sim)
             ex['text'] && list_format.push(ex)
         });
@@ -187,6 +191,7 @@ function load_list(){
             console.log('none')
         }else{
             window['temp_list'] = util.array_column(list_format,'mid');
+            console.log("list", list_format);
             backMessage({type:'list_done',data:list_format});
         }
         window['load_stid'] = null;
@@ -213,8 +218,6 @@ function text_format(text){
 }
 
 $(function(){
-    load_list();
-
     $('body').on('click','.empty_expand_word',function(){
 
         var id = $(this).data('id')
