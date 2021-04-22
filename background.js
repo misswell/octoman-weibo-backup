@@ -398,15 +398,27 @@ function wei_save(save_data) {
         }
         // if (res.ok === 1) {
         if (res.code == '100000') {
-            let totalHtml = res.data.trim().replace(/>\s+</, '').replace('\n', '').replace('\r', '');
+            let totalHtml = res.data.trim().replace(/>\s+</, '').replace('\n', '').replace('\t', '').replace('\r', '');
             let $html = $.parseHTML(totalHtml);
-            let items = []
+            let htmlItems = []
             $html.forEach((item, i) => {
                 if ($(item).filter('.WB_cardwrap').length > 0) {
-                    items.push(item);
+                    // "created_at": "Fri Oct 02 17:26:50 +0800 2020",
+                    // "id": "4555632164735196",
+                    // "mid": "4555632164735196",
+                    // "text": "我将舒舒服服地生活，想说时就说，无言时就沉默。 ",
+                    // "source": "红圈儿科长Android",
+                    // "pic_ids": [],
+                    // "reposts_count": 0,
+                    // "comments_count": 0,
+                    // "attitudes_count": 24,
+                    // "pic_num": 0,
+                    // "raw_text": "我将舒舒服服地生活，想说时就说，无言时就沉默。 ​​​",
+                    // "bid": "JnlfijRQ8"
+                    htmlItems.push(item);
                 }
             })
-            items.pop();// 去掉最后一条lazeload
+            htmlItems.pop();// 去掉最后一条lazeload
 
             // let cards = res['data']['cards'];
             let items_sim = [];
@@ -417,15 +429,14 @@ function wei_save(save_data) {
             //     }
             // });
 
-            if (items.length >= 1) {
+            if (htmlItems.length >= 1) {
                 window['retry' + user.uid] = 0;
                 window['total' + user.uid] = ((total && total > 0) ? total : window['total' + user.uid]) || 0;
-                window['num' + user.uid] += items.length ? items.length : 0;
+                window['num' + user.uid] += htmlItems.length ? htmlItems.length : 0;
                 
                 let d_time = 0;
-                items.map((item) => {
+                htmlItems.map((item) => {
                     let mid = $(item).attr('mid');
-                    console.log('mid', mid); // 每一条的id
                     item.idstr = mid;
                     items_sim.push(item);
                     // 展开全文
@@ -595,9 +606,12 @@ function long_replace_text(mid, long, uid) {
     if (index > -1) {
         let tmp_item = window['items_list' + uid][index];
         if(tmp_item.idstr === mid){
-            let detail = window['items_list' + uid][index];
-            detail['text'] = long;
-            window['items_list' + uid][index] = detail;
+            let itemHtml = window['items_list' + uid][index];
+            $(itemHtml).find('.WB_text').html(long);
+            // itemHtml['text'] = long;
+            console.log($(itemHtml).find('.WB_text').html());
+            console.log(itemHtml);
+            window['items_list' + uid][index] = itemHtml;
         }else if(tmp_item.retweeted_status && tmp_item.retweeted_status.idstr === mid){
             let re_detail = window['items_list' + uid][index]['retweeted_status'];
             re_detail['text'] = long;
@@ -617,7 +631,12 @@ function create_html(user, word = '') {
     }
     let li;
     for (let i in list) {
-        // li = html_div(list[i]);
+        let item = list[i];
+        $(item).find('img').each((index, img) => {
+            if ($(img).attr('src').startsWith('//')) {
+                $(img).attr('src', 'https:' + $(img).attr('src'))
+            }
+        })
         li = list[i].innerHTML;
         html += li;
     }
@@ -770,9 +789,10 @@ function html_head(title) {
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>${title ? title : 'Document'}</title>
-    <link rel="stylesheet" href="https://h5.sinaimg.cn/marvel/v1.4.5/css/card/cards.css">
-    <link rel="stylesheet" href="https://h5.sinaimg.cn/marvel/v1.4.5/css/lib/base.css">
-    <style>[class*=m-imghold]>a>img {z-index: 0;height: 100%;position: absolute;}</style>
+    <link type="text/css" rel="stylesheet" charset="utf-8" href="https://img.t.sinajs.cn/t6/style/css/module/base/frame.css?version=dd17e96454cba1d9" putoff="style/css/module/combination/extra.css?version=dd17e96454cba1d9">
+    <link type="text/css" rel="stylesheet" charset="utf-8" href="https://img.t.sinajs.cn/t6/style/css/module/combination/PCD_profile_home_A.css?version=dd17e96454cba1d9" includes="style/css/module/pagecard/PCD_counter.css?version=dd17e96454cba1d9|style/css/module/pagecard/PCD_person_info.css?version=dd17e96454cba1d9|style/css/module/pagecard/PCD_user_a.css?version=dd17e96454cba1d9|style/css/module/pagecard/PCD_pictext_a.css?version=dd17e96454cba1d9|style/css/module/pagecard/PCD_piclist_a.css?version=dd17e96454cba1d9|style/css/module/pagecard/PCD_mydata.css?version=dd17e96454cba1d9|style/css/module/pagecard/PCD_photolist.css?version=dd17e96454cba1d9|style/css/module/list/comb_WB_feed_profile.css?version=dd17e96454cba1d9|style/css/module/global/WB_timeline.css?version=dd17e96454cba1d9|style/css/module/pagecard/PCD_profileme.css?version=dd17e96454cba1d9|style/css/module/tab/comb_WB_tab_profile.css?version=dd17e96454cba1d9|style/css/module/list/comb_webim.css?version=dd17e96454cba1d9">
+    <link type="text/css" rel="stylesheet" charset="utf-8" href="https://img.t.sinajs.cn/t6/skin/skin048/skin.css?version=dd17e96454cba1d9" id="skin_style">
+    <link href="https://img.t.sinajs.cn/t6/style/css/module/combination/extra.css?version=dd17e96454cba1d9" type="text/css" rel="stylesheet"><link rel="Stylesheet" type="text/css" charset="utf-8" href="https://img.t.sinajs.cn/t6/style/css/module/list/comb_webim.css?version=64fba3a010c64550"><div style="position: absolute; top: -9999px; left: -9999px;"></div><link rel="Stylesheet" type="text/css" charset="utf-8" href="https://img.t.sinajs.cn/t6/style/css/module/pagecard/PCD_mplayer.css?version=64fba3a010c64550"><link rel="stylesheet" type="text/css" href="https://img.t.sinajs.cn/t4/appstyle/vip_v2/css/apps_PRF/v6fansclub/Pl_Third_RightClub.css?id=123456123?version=dd17e96454cba1d9" id="FM_161909157010237"><link rel="stylesheet" type="text/css" href="https://img.t.sinajs.cn/t6/style/css/apps_PCD/event/WB_feed_spec_red2017.css?version=dd17e96454cba1d9" id="FM_161909157010238">
 </head>
 <body>
 <div id="app" class="m-container-max">
