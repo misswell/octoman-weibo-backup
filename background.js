@@ -137,7 +137,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         window['html_time' + user.uid] = 1;
         window['retry' + user.uid] = 0;
         window['cards_list' + user.uid] = [];
-        window['page' + user.uid] = 1;
         window['stop_now' + user.uid] = 0;
         if (window['st_id' + user.uid]) {
             clearTimeout(window['st_id' + user.uid]);
@@ -320,8 +319,10 @@ function stop_all() {
             window['stop_now' + item.id] = 1;
             console.log('item', item);
             create_html(item.user, '_finish');
-            window['page' + item.id] = 0;
-            window['cards_list' + item.id] = [];
+            window['page' + item.id] = 1;
+            window['pre_page' + item.id] = 0;
+            window['page_bar' + item.id] = 0;
+            window['items_list' + item.id] = [];
             events.wei_process({
                 total: window['total' + item.id],
                 num: window['num' + item.id],
@@ -337,7 +338,6 @@ function stop_all() {
 }
 
 function wei_save(save_data) {
-    console.log('wei_save', save_data);
     let containerid = save_data.containerid;
     let domainId = save_data.domainId;
     let user = save_data.user;
@@ -345,28 +345,34 @@ function wei_save(save_data) {
     let murl = 'https://m.weibo.cn/api/container/getIndex'; // 移动端
     let url = 'https://weibo.com/p/aj/v6/mblog/mbloglist?ajwvr=6'; // PC端
     let page;
-    let page_bar;
+    let prePage;
+    let pageBar;
     let items_list;
     let total = 0;
+    // 100 110 111 210 220 221
     if (!window['page' + user.uid]) {
         window['page' + user.uid] = 1;
     }
     page = window['page' + user.uid];
+    if (!window['pre_page' + user.uid]) {
+        window['pre_page' + user.uid] = 0;
+    }
+    prePage = window['pre_page' + user.uid]
     if (!window['page_bar' + user.uid]) {
         window['page_bar' + user.uid] = 0;
     } 
-    page_bar = window['page_bar' + user.uid];
+    pageBar = window['page_bar' + user.uid];
     if (!window['items_list' + user.uid]) {
         window['items_list' + user.uid] = [];
     }
-    items_list = window['items_list' + user.uid];
+    items_list = window['items_list' + user.uid]; // 旧列表
     let data = {
         domain: domainId,
         id: pId,
         page: page,
-        per_page: page,
-        page_bar: page_bar,
-        is_all: 1
+        pre_page: prePage,
+        pagebar: pageBar,
+        is_all: 1 // 不带这个是仅原创微博
     };
     let mdata = {
         containerid: containerid,
@@ -379,16 +385,6 @@ function wei_save(save_data) {
             console.log('total', total);
         }
     }, 'JSON').fail(function () {
-        events.wei_process({
-            total: window['total' + user.uid],
-            num: window['num' + user.uid],
-            tip: "1分钟后自动重试",
-            name: user.username,
-            avatar: window['avatar' + user.uid]
-        });
-        window['st_id' + user.uid] = setTimeout(function () {
-            wei_save(save_data);
-        }, 1 * 60 * 1000);
     });
     console.log('wei_save start', url, data);
 
@@ -396,38 +392,18 @@ function wei_save(save_data) {
         if (window['stop_now' + user.uid] === 1) {
             return
         }
-        // if (res.ok === 1) {
         if (res.code == '100000') {
             let totalHtml = res.data.trim().replace(/>\s+</, '').replace('\n', '').replace('\t', '').replace('\r', '');
             let $html = $.parseHTML(totalHtml);
             let htmlItems = []
             $html.forEach((item, i) => {
                 if ($(item).filter('.WB_cardwrap').length > 0) {
-                    // "created_at": "Fri Oct 02 17:26:50 +0800 2020",
-                    // "id": "4555632164735196",
-                    // "mid": "4555632164735196",
-                    // "text": "我将舒舒服服地生活，想说时就说，无言时就沉默。 ",
-                    // "source": "红圈儿科长Android",
-                    // "pic_ids": [],
-                    // "reposts_count": 0,
-                    // "comments_count": 0,
-                    // "attitudes_count": 24,
-                    // "pic_num": 0,
-                    // "raw_text": "我将舒舒服服地生活，想说时就说，无言时就沉默。 ​​​",
-                    // "bid": "JnlfijRQ8"
                     htmlItems.push(item);
                 }
             })
             htmlItems.pop();// 去掉最后一条lazeload
 
-            // let cards = res['data']['cards'];
             let items_sim = [];
-
-            // cards = cards.filter((item) => {
-            //     if (item && item.card_type === 9 && item.mblog) {
-            //         return true;
-            //     }
-            // });
 
             if (htmlItems.length >= 1) {
                 window['retry' + user.uid] = 0;
@@ -438,36 +414,35 @@ function wei_save(save_data) {
                 htmlItems.map((item) => {
                     let mid = $(item).attr('mid');
                     item.idstr = mid;
-                    items_sim.push(item);
-                    // 展开全文
-                    if (item && item.textContent.indexOf('展开全文') > -1) {
-                        d_time++;
-                        setTimeout(function () {
-                            var detail_a = $(item).find('.WB_text> a');
-                            detail_a.each((index, unfold_item)=> {
-                                if ($(unfold_item).attr('action-type') == 'fl_unfold') {
-                                    unfoldActionData = $(unfold_item).attr('action-data');
-                                    wei_detail(mid, unfoldActionData, user.uid);
-                                }
-                            })
-                        }, d_time * 2000);
+                    items_sim.push(item); // 新列表
+                    // 正文展开全文
+                    if (item && $(item).find('.WB_detail>.WB_text').text().indexOf('展开全文') > -1) {
+                        var detail_a = $(item).find('.WB_detail>.WB_text> a');
+                        detail_a.each((index, unfold_item)=> {
+                            if ($(unfold_item).attr('action-type') == 'fl_unfold') {
+                                unfoldActionData = $(unfold_item).attr('action-data');
+                                wei_detail(mid, unfoldActionData, user.uid, false);
+                            }
+                        })
                     }
-                    // 转发
-                    // if(item && item.mblog.retweeted_status && item.mblog.retweeted_status.text.indexOf('全文') > -1){
-                    //     d_time++;
-                    //     setTimeout(function () {
-                    //         wei_detail(item.mblog.retweeted_status.idstr, containerid);
-                    //     }, d_time * 2000);
-
-                    // }
+                    // 转发展开全文
+                    if (item && $(item).find('.WB_expand>.WB_text').text().indexOf('展开全文') > -1) {
+                        var expand_a = $(item).find('.WB_expand>.WB_text>a');
+                        expand_a.each((index, unfold_item)=> {
+                            if ($(unfold_item).attr('action-type') == 'fl_unfold') {
+                                unfoldActionData = $(unfold_item).attr('action-data');
+                                wei_detail(mid, unfoldActionData, user.uid, true);
+                            }
+                        })
+                    }
                 });
 
                 window['items_list' + user.uid] = [...items_list, ...items_sim];
-
+                // 大于500条，输出一次
                 if(window['items_list' + user.uid].length >= config_get(PER_PAGE)){
                     setTimeout(function () {
                         create_html(user);
-                    }, 3000 + d_time * 2000);
+                    }, 2000);
                 }
 
                 // if (window['items_list' + containerid].length >= 500) {
@@ -493,10 +468,21 @@ function wei_save(save_data) {
                     });
 
                     window['st_id' + user.uid] = setTimeout(function () {
-                        if (page_bar == 1) {
-                            window['page' + user.uid] = page + 1;
+                        // set page bar
+                        if (prePage == page) {
+                            window['page_bar' + user.uid] = window['page_bar' + user.uid] == 0?1:0;
+                        } else {
+                            window['page_bar' + user.uid] = 0;
                         }
-                        window['page_bar' + user.uid] = window['page_bar' + user.uid] == 0?1:0;
+                        // set pre page
+                        if (prePage != page && pageBar == 0) {
+                            window['pre_page' + user.uid] += 1;
+                        }
+                        // set page
+                        if (prePage == page && pageBar == 1) {
+                            window['page' + user.uid] += 1;
+                        }
+                        console.log(window['page' + user.uid], window['pre_page' + user.uid], window['page_bar' + user.uid])
                         wei_save(save_data);
                     }, (DELAY_PAGE + Math.random() * 4) * 1000 + d_time * 2000);
                 // }
@@ -514,6 +500,8 @@ function wei_save(save_data) {
 
                     create_html(user, '_finish');
                     window['page' + user.uid] = 1;
+                    window['pre_page' + user.uid] = 0;
+                    window['page_bar' + user.uid] = 0;
                     window['items_list' + user.uid] = [];
                     st_pop(user.uid);
                     events.wei_process({
@@ -565,36 +553,20 @@ function wei_save(save_data) {
 }
 
 
-function wei_detail(mId, action_data, uid) {
+function wei_detail(mId, action_data, uid, isRepost) {
     // 展开全文
-    
-    var url = 'https://weibo.com/p/aj/mblog/getlongtext?ajwvr=6&' + action_data
+    var url = 'https://weibo.com/p/aj/mblog/getlongtext?ajwvr=6&' + action_data;
     $.get(url, function (res) {
         if (res.code == '100000') {
             let long = res.data.html;
-            long_replace_text(mId, long, uid)
+            long_replace_text(mId, long, uid, isRepost)
         } else {
         }
     }, 'JSON').fail(function () {
     })
-    // let url = 'https://m.weibo.cn/statuses/extend';
-    // let data = {
-    //     id: id,
-    // };
-    // console.log('wei_detail start', data);
-    // $.get(url, data, function (res) {
-    //     if (res.ok === 1) {
-    //         let long = res.data && res.data.longTextContent;
-    //         long_replace_text(id, long, containerid)
-    //     } else {
-
-    //     }
-    // }, 'JSON').fail(function () {
-
-    // })
 }
 
-function long_replace_text(mid, long, uid) {
+function long_replace_text(mid, long, uid, isRepost) {
     // console.log('long_replace_text',long);
     let index = window['items_list' + uid].findIndex((item) => {
         if (item.idstr === mid) {
@@ -607,11 +579,13 @@ function long_replace_text(mid, long, uid) {
         let tmp_item = window['items_list' + uid][index];
         if(tmp_item.idstr === mid){
             let itemHtml = window['items_list' + uid][index];
-            $(itemHtml).find('.WB_text').html(long);
-            // itemHtml['text'] = long;
-            console.log($(itemHtml).find('.WB_text').html());
-            console.log(itemHtml);
-            window['items_list' + uid][index] = itemHtml;
+            if (isRepost) {
+                $(itemHtml).find('.WB_expand>.WB_text').html(long);
+                window['items_list' + uid][index] = itemHtml;
+            } else {
+                $(itemHtml).find('.WB_detail>.WB_text').html(long);
+                window['items_list' + uid][index] = itemHtml;
+            }
         }else if(tmp_item.retweeted_status && tmp_item.retweeted_status.idstr === mid){
             let re_detail = window['items_list' + uid][index]['retweeted_status'];
             re_detail['text'] = long;
@@ -795,8 +769,8 @@ function html_head(title) {
     <link href="https://img.t.sinajs.cn/t6/style/css/module/combination/extra.css?version=dd17e96454cba1d9" type="text/css" rel="stylesheet"><link rel="Stylesheet" type="text/css" charset="utf-8" href="https://img.t.sinajs.cn/t6/style/css/module/list/comb_webim.css?version=64fba3a010c64550"><div style="position: absolute; top: -9999px; left: -9999px;"></div><link rel="Stylesheet" type="text/css" charset="utf-8" href="https://img.t.sinajs.cn/t6/style/css/module/pagecard/PCD_mplayer.css?version=64fba3a010c64550"><link rel="stylesheet" type="text/css" href="https://img.t.sinajs.cn/t4/appstyle/vip_v2/css/apps_PRF/v6fansclub/Pl_Third_RightClub.css?id=123456123?version=dd17e96454cba1d9" id="FM_161909157010237"><link rel="stylesheet" type="text/css" href="https://img.t.sinajs.cn/t6/style/css/apps_PCD/event/WB_feed_spec_red2017.css?version=dd17e96454cba1d9" id="FM_161909157010238">
 </head>
 <body>
-<div id="app" class="m-container-max">
-    <div style="height: 100%;">`
+<div id="Pl_Official_MyProfileFeed__20">
+    <div class="WB_feed WB_feed_v3 WB_feed_v4">`
 }
 
 function html_foot() {
