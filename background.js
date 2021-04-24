@@ -372,8 +372,12 @@ function wei_save(save_data) {
         page: page,
         pre_page: prePage,
         pagebar: pageBar,
-        is_all: 1 // 不带这个是仅原创微博
     };
+    if (config_get(IS_ALL) == 1) {
+        data.is_all = 1
+    } else {
+        data.is_ori = 1
+    }
     let mdata = {
         containerid: containerid,
         page_type: '03',
@@ -799,6 +803,7 @@ function default_option() {
     default_func(PER_PAGE, '500');
     default_func(COMMENT_ROW, '1');//1显示2不显示;
     default_func(PIC_SHOW, '1')//1小图2大图;
+    default_func(IS_ALL, '1')//保存全部微博or仅原创
 }
 
 default_option();

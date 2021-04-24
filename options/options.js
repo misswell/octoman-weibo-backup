@@ -2,6 +2,7 @@ function show_page() {
     $("#per_page").val(config_get(PER_PAGE));
     $("#comment_row").val(config_get(COMMENT_ROW));
     $("#pic_show").val(config_get(PIC_SHOW));
+    $("#is_all").val(config_get(IS_ALL));
 }
 
 function toast(msg){
@@ -27,6 +28,11 @@ $("#pic_show_btn").click(()=>{
     var val = $("#pic_show").val();
     config_set({[PIC_SHOW]:val});
     toast("预览图片保存成功！")
+});
+$("#is_all_btn").click(()=>{
+    var val = $("#is_all").val();
+    config_set({[IS_ALL]:val});
+    toast("保存成功！")
 });
 
 show_page();
