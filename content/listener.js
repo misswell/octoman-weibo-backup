@@ -1,12 +1,12 @@
 // auto run 
 chrome.runtime.onMessage.addListener(function (res, sender, sendResponse) {
-    console.log('common onMessage Listener', res);
+    // console.log('common onMessage Listener', res);
     if(res){
         if (res.type === 'tabs') {
             let url = res.data.url;
             let param = getUrlParams(url);
             let domain = getUrlDomain(url);
-            console.log('domain is', domain,'param is',param);
+            // console.log('domain is', domain,'param is',param);
             wb_info();
         } else if(res.type === 'load_list'){
             // load_list()
@@ -36,18 +36,18 @@ var events = {
     tabs: function () {
         //获取当前页面链接
         chrome.runtime.sendMessage({type: 'tabs'}, function (tabs) {
-            console.log('sendMessage：tabs', tabs)
+            // console.log('sendMessage：tabs', tabs)
         });
     },
     album_fail:function(info){
         chrome.runtime.sendMessage({type: 'album_fail',data:info}, function (res) {
-            console.log('sendMessage：album_fail', res)
+            // console.log('sendMessage：album_fail', res)
         });
     },
     user_list:function(list){
         //获取当前页面链接
         chrome.runtime.sendMessage({type: 'user_list',data:list}, function (res) {
-            console.log('sendMessage：user_list', res)
+            // console.log('sendMessage：user_list', res)
         });
     },
 };
@@ -73,7 +73,7 @@ function wb_info(){
         });
         if(list.length>0){
             events.user_list(list);
-            console.log('user_list',list);
+            // console.log('user_list',list);
             window.user_list = list
         }else{
             events.album_fail('当前页面找不到用户（请等页面加载完成）')
@@ -93,7 +93,7 @@ function detail_fail(data){
     $('#empty'+mid).find('.empty_expand_word').html(html).removeClass('empty_expand_word');
 }
 function load_list(){
-    console.log('load_list');
+    // console.log('load_list');
     if(window['load_stid']){
         clearTimeout(window['load_stid']);
     }
@@ -131,7 +131,7 @@ function load_list(){
 
             // 转发的引用部分
             var expand = $(item).find('.WB_detail>.WB_feed_expand');
-            console.log('expand', expand);
+            // console.log('expand', expand);
             var ex = {};
             if(expand){
                 ex['text'] = $.trim($(expand).find('.WB_expand>.WB_text').html());
@@ -182,16 +182,16 @@ function load_list(){
                 video:video,
                 ex:ex,
             };
-            console.log("sim", sim);
+            // console.log("sim", sim);
             // list_format.push(sim)
             ex['text'] && list_format.push(ex)
         });
 
         if(window['temp_list'] && JSON.stringify(window['temp_list']) === JSON.stringify(util.array_column(list_format,'mid'))){
-            console.log('none')
+            // console.log('none')
         }else{
             window['temp_list'] = util.array_column(list_format,'mid');
-            console.log("list", list_format);
+            // console.log("list", list_format);
             backMessage({type:'list_done',data:list_format});
         }
         window['load_stid'] = null;
@@ -221,7 +221,7 @@ $(function(){
     $('body').on('click','.empty_expand_word',function(){
 
         var id = $(this).data('id')
-        console.log('empty_expand_word',id)
+        // console.log('empty_expand_word',id)
         backMessage({type:'get_expand',data:id})
     })
 });

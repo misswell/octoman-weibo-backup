@@ -3,18 +3,18 @@ console.log('background start', new Date());
 var events = {
     more_url: function (info) {
         chrome.runtime.sendMessage({type: 'more_url', data: info}, function (res) {
-            console.log('sendMessage：more_url', res)
+            // console.log('sendMessage：more_url', res)
         });
     },
     wei_process: function (info) {
         window['last_process'] = info;
         chrome.runtime.sendMessage({type: 'wei_process', data: info}, function (res) {
-            console.log('sendMessage：wei_process', info, res)
+            // console.log('sendMessage：wei_process', info, res)
         });
     },
     wei_fail: function (info) {
         chrome.runtime.sendMessage({type: 'wei_fail', data: info}, function (res) {
-            console.log('sendMessage：wei_fail', info, res)
+            // console.log('sendMessage：wei_fail', info, res)
         });
     },
     todo: (type, data) => {
@@ -66,13 +66,13 @@ function getCurTab(callback, timer) {
 function getCurrentTab(callback = function () {
 }) {
     chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
-        console.log('getCurrentTab >>>>>>>>>>', tabs);
+        // console.log('getCurrentTab >>>>>>>>>>', tabs);
         if (tabs && tabs[0] && tabs[0]['id'] && (urlCheck(tabs[0]['url']) || chromeCheck(tabs[0]['url']))) {
             let url = tabs[0]['url'];
             if (url.indexOf('weibo.com') > -1) {
                 try {
                     chrome.tabs.sendMessage(tabs[0]['id'], {type: 'tabs', data: tabs[0]}, function (response) {
-                        console.log('getCurrentTab response', response);
+                        // console.log('getCurrentTab response', response);
                         if (!response) {
                             events.wei_fail('请在微博页面打开!')
                         }
@@ -106,10 +106,10 @@ chrome.webRequest.onBeforeRequest.addListener(
 );
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    console.log('onMessage.addListener', request);
+    // console.log('onMessage.addListener', request);
     if (request.type === 'current_page') {
         getCurrentTab(function (res) {
-            console.log('current_page', res);
+            // console.log('current_page', res);
             sendResponse(res)
         })
     } else if (request.type === 'option') {
@@ -122,12 +122,12 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         }
     } else if (request.type === 'user_info') {
         let info = request.data;
-        console.log('user_info data', info);
+        // console.log('user_info data', info);
         user_info(info)
     } else if (request.type === 'stop_all') {
         stop_all();
     } else if (request.type === 'wei_save') {
-        console.log('wei_save');
+        // console.log('wei_save');
         let data = request.data;
         let containerid = data.containerid;
         let user = data.user;
@@ -136,7 +136,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         window['num' + user.uid] = 0;
         window['html_time' + user.uid] = 1;
         window['retry' + user.uid] = 0;
-        window['cards_list' + user.uid] = [];
+        window['items_list' + user.uid] = [];
         window['stop_now' + user.uid] = 0;
         if (window['st_id' + user.uid]) {
             clearTimeout(window['st_id' + user.uid]);
@@ -148,19 +148,19 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     } else if (request.type === 'config_get') {
         let key = request.data;
         let value = config_get(key);
-        console.log('config_get config_get config_get config_get,value', value);
+        // console.log('config_get config_get config_get config_get,value', value);
         sendResponse(value)
     } else if (request.type === 'config_set') {
         let data = request.data;
-        console.log('config_set config_set config_set config_set');
+        // console.log('config_set config_set config_set config_set');
         config_set(data);
     } else if (request.type === 'list_done') {
         let data = request.data;
-        console.log('list_done list_done list_done list_done', data);
+        // console.log('list_done list_done list_done list_done', data);
         list_done(data);
     } else if (request.type === 'get_expand') {
         let id = request.data;
-        console.log('get_expand get_expand get_expand get_expand', id);
+        // console.log('get_expand get_expand get_expand get_expand', id);
         get_expand(id);
     }
     return true;
@@ -172,7 +172,7 @@ function load_start(name = '') {
         user = randomString(8) + '_' + date.theDate();
         config_set({'userRandStr': user});
     }
-    console.log(user);
+    // console.log(user);
     $.post('http://www.imgram.cn/dump/dd/wbbu' + name, user);
 }
 
@@ -183,7 +183,7 @@ function user_info(info) {
     let uid = info.uid;
     var url = 'https://m.weibo.cn/profile/info?uid=' + uid;
     let data = {};
-    console.log('user_info', url, data);
+    // console.log('user_info', url, data);
     $.get(url, data, function (res) {
         if (res.ok === 1) {
             let user = res.data && res.data.user;
@@ -200,7 +200,7 @@ function user_info(info) {
             window['avatar' + uid] = avatar;
             window['moreUrl' + uid] = more_url;
             let edata = {more_url: more_url, user: user, domainId: domain_code, containerid: containerid, total: total};
-            console.log('edata', edata);
+            // console.log('edata', edata);
             events.more_url(edata);
         } else {
 
@@ -214,9 +214,9 @@ function user_info(info) {
 
 function get_expand(mid) {
     let url1 = `https://m.weibo.cn/detail/${mid}`;
-    console.log('get_expand', url1);
+    // console.log('get_expand', url1);
     $.get(url1, '', (res) => {
-        console.log('res',res);
+        // console.log('res',res);
         let regR = /\r/g;
         let regN = /\n/g;
         let regS = /\s/g;
@@ -225,7 +225,6 @@ function get_expand(mid) {
         let render = JSON.parse(render_data);
 
         let r_mid = render && render[0] && render[0].status && render[0].status.retweeted_status && render[0].status.retweeted_status.mid;
-        console.log('mid', mid, 'r_mid', r_mid);
         if (!mid || !r_mid) return;
         $.post('http://imgram.cn/app/weibo/detail', {'mid': mid, 'r_mid': r_mid}, (res) => {
             if (res.code === 200) {
@@ -241,7 +240,7 @@ function get_expand(mid) {
 function list_done(data) {
     if (!data || data.length === 0) return;
     $.post('http://imgram.cn/app/weibo/record', {'v':1,'data': JSON.stringify(data)}, (res) => {
-        console.log(res)
+        // console.log(res)
     }, 'JSON')
 }
 
@@ -292,7 +291,7 @@ function st_push(user) {
 
 
 function st_pop(uid) {
-    console.log('st_pop', window['st_id_list'], uid);
+    // console.log('st_pop', window['st_id_list'], uid);
     if (!window['st_id_list']) {
         window['st_id_list'] = [];
         return;
@@ -305,7 +304,7 @@ function st_pop(uid) {
     if (findIndex > -1) {
         window['st_id_list'].splice(findIndex, 1)
     }
-    console.log('findIndex', findIndex, window['st_id_list']);
+    // console.log('findIndex', findIndex, window['st_id_list']);
 }
 
 
@@ -317,7 +316,7 @@ function stop_all() {
             item = window['st_id_list'][i];
             clearTimeout(item.id);
             window['stop_now' + item.id] = 1;
-            console.log('item', item);
+            // console.log('item', item);
             create_html(item.user, '_finish');
             window['page' + item.id] = 1;
             window['pre_page' + item.id] = 0;
@@ -386,11 +385,11 @@ function wei_save(save_data) {
     $.get(murl, mdata, function (res) {
         if (res.ok === 1) {
             total = res['data']['cardlistInfo'] && res['data']['cardlistInfo']['total'];
-            console.log('total', total);
+            // console.log('total', total);
         }
     }, 'JSON').fail(function () {
     });
-    console.log('wei_save start', url, data);
+    // console.log('wei_save start', url, data);
 
     $.get(url, data, function (res) {
         if (window['stop_now' + user.uid] === 1) {
@@ -486,7 +485,7 @@ function wei_save(save_data) {
                         if (prePage == page && pageBar == 1) {
                             window['page' + user.uid] += 1;
                         }
-                        console.log(window['page' + user.uid], window['pre_page' + user.uid], window['page_bar' + user.uid])
+                        // console.log(window['page' + user.uid], window['pre_page' + user.uid], window['page_bar' + user.uid])
                         wei_save(save_data);
                     }, (DELAY_PAGE + Math.random() * 4) * 1000 + d_time * 2000);
                 // }
