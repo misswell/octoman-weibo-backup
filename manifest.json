@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Octoman微博备份",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "一键备份微博",
   "background": {
     "service_worker": "background.js"
@@ -49,7 +49,9 @@
         "*://*.weibo.com/*",
         "*://*.weibo.cn/*"
       ],
-      "js": ["content/listener.js"],
+      "js": [
+        "content/listener.js"
+      ],
       "run_at": "document_idle"
     }
   ]

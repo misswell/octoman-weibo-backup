@@ -16,8 +16,9 @@
   <div class="tips-trigger">
     <span class="tips-icon">⚠️</span>
     <span>请勿同时保存多个用户，会限制访问</span>
+    <button id="tips-toggle" class="tips-toggle" type="button" aria-expanded="false" aria-controls="tips-detail">展开</button>
   </div>
-  <div class="tips-detail">
+  <div class="tips-detail" id="tips-detail">
     <ol>
       <li>需要登录微博（m.weibo.cn 或 weibo.com）</li>
       <li>保存过程中不建议操作微博</li>
@@ -31,9 +32,14 @@
 
 <section class="form-row">
   <label class="label" for="uid">微博 UID</label>
+  <div class="user-select-row" id="user-select-row" hidden>
+    <label class="label" for="user-select">页面用户</label>
+    <select id="user-select"></select>
+  </div>
   <div class="input-group">
     <input id="uid" type="text" placeholder="纯数字 UID，如 1669879400" autocomplete="off"/>
     <button id="start" class="btn btn-primary">开始备份</button>
+    <button id="restart" class="btn btn-restart" style="display:none">重新开始</button>
   </div>
   <p class="uid-hint" id="uid-hint">提示：先在 weibo.com 登录后再点开始</p>
 </section>

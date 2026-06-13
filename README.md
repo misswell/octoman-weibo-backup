@@ -14,9 +14,9 @@
 - 使用步骤：
   1. 在 Chrome 里打开 `chrome://extensions/`，开启右上角「开发者模式」，点「加载已解压的扩展程序」选中本目录。
   2. 在浏览器里登录任意一个微博站点（推荐 `https://m.weibo.cn`，登录态会被扩展直接复用）。
-  3. 点扩展图标，弹窗里输入要备份的微博 UID（纯数字）。如果你当前 tab 是 `weibo.com/u/xxx`、`weibo.cn/u/xxx`、`m.weibo.cn/profile/xxx` 之类的页面，UID 会自动预填。
+  3. 点扩展图标，弹窗里输入要备份的微博 UID（纯数字）。如果你当前 tab 是 `weibo.com/u/xxx`、`weibo.cn/u/xxx`、`m.weibo.cn/profile/xxx` 之类的页面，UID 会自动预填；如果当前列表页识别到多个用户，可在「页面用户」下拉框中选择下载对象。
   4. 点「开始备份」，进度会持续显示在弹窗中；可以关闭弹窗，后台会继续抓。
-  5. 每达到一次「存档间隔」会触发一次浏览器下载（默认 500 条一个 html）。整个任务结束时会再下载一个带 `_finish` 后缀的尾包。
+  5. 每达到一次「存档间隔」会触发一次浏览器下载（默认 500 条一个 html）。文件会保存到浏览器下载目录下的 `WeiboBackup` 文件夹，整个任务结束时会再下载一个带 `_finish` 后缀的尾包。
 
 <img src="http://blog.liuguofeng.com/wp-content/uploads/2020/02/snipaste_20200215_115052.png" width="700">
 
@@ -58,6 +58,19 @@
 - 开发版使用方法见文章中的方法二 https://www.jianshu.com/p/0ce6ab938fcf
 
 ## 更新说明
+v0.2.2
+- 支持在微博列表页识别多个用户，并在 popup 中选择某一用户进行备份。
+- 下载文件统一保存到浏览器下载目录下的 `WeiboBackup` 文件夹。
+- 下载文件名改为使用目标用户昵称，并在浏览器决定文件名时强制修正，避免退回默认「下载.html」。
+- 提示说明改为手动展开 / 收起，不再鼠标悬停自动展开。
+- 翻页请求节奏改为更快且随机抖动，长微博正文展开改为小批量并发处理。
+
+v0.2.1
+- 任务持久化改用 `chrome.storage.local`，浏览器关闭后任务状态不丢失。
+- 新增「继续备份」功能：输入已有任务的 UID 可从中断处继续，不必重新开始。
+- 新增「重新开始」按钮：支持强制清空旧进度重新抓取。
+- 网络异常 / 接口限流采用递增退避重试（1→2→4→8→15→30 分钟），避免频繁请求加重风控。
+- `fetch` 增加底层网络错误捕获（DNS / 连接被拒 / 超时），与业务错误区分处理。
 v0.2.0
 - 升级到 manifest v3（service worker + chrome.storage + chrome.downloads + chrome.alarms）。
 - 改为直接走 `m.weibo.cn` 的 `profile/info`、`api/container/getIndex`、`statuses/extend` 接口，不再依赖 `weibo.com` PC 页面 DOM。

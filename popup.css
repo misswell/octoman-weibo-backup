@@ -37,17 +37,33 @@ body {
   padding: 8px 10px;
   font-size: 12px;
   color: #e65100;
-  cursor: pointer;
   user-select: none;
 }
 .tips-trigger .tips-icon { font-size: 14px; }
+.tips-trigger span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.tips-toggle {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #e8642d;
+  background: #fff;
+  border: 1px solid #f6b08f;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.tips-toggle:hover {
+  background: #fff3ec;
+}
 .tips-detail {
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.25s ease, padding 0.25s ease;
 }
-.tips-box:hover .tips-detail,
-.tips-box:focus-within .tips-detail {
+.tips-box.is-open .tips-detail {
   max-height: 220px;
   padding: 0 10px 8px;
 }
@@ -87,6 +103,32 @@ body {
   background: #fff;
 }
 .input-group input[type="text"]:focus {
+  border-color: #e8642d;
+  box-shadow: 0 0 0 3px rgba(232,100,45,0.1);
+}
+.user-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.user-select-row[hidden] {
+  display: none;
+}
+.user-select-row .label {
+  flex: 0 0 auto;
+}
+.user-select-row select {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 9px;
+  font-size: 12px;
+  color: #333;
+  border: 1.5px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  outline: none;
+}
+.user-select-row select:focus {
   border-color: #e8642d;
   box-shadow: 0 0 0 3px rgba(232,100,45,0.1);
 }
@@ -214,3 +256,12 @@ body {
   transition: color 0.2s;
 }
 .link:hover { color: #e8642d; }
+
+.btn-restart {
+  background: #f5f5f5;
+  color: #e8642d;
+  border: 1.5px solid #e8642d;
+  font-size: 11px;
+  padding: 5px 10px;
+}
+.btn-restart:hover { background: #e8642d; color: #fff; }

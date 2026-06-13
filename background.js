@@ -6,6 +6,13 @@ const TASKS = new Map();
 let LAST_PROGRESS = null;
 const ALARM_PREFIX = 'wb_retry_';
 const TASK_STORE_KEY = 'wb_tasks_v1';
+const DOWNLOAD_DIR = 'WeiboBackup';
+const DOWNLOAD_FILENAME_QUEUE = [];
+
+function removeQueuedFilename(filename) {
+  const index = DOWNLOAD_FILENAME_QUEUE.indexOf(filename);
+  if (index !== -1) DOWNLOAD_FILENAME_QUEUE.splice(index, 1);
+}
 
 function persistTasks() {
   try {
@@ -25,21 +32,21 @@ function persistTasks() {
         stopped: !!t.stopped
       };
     }
-    if (chrome.storage && chrome.storage.session) {
-      chrome.storage.session.set({ [TASK_STORE_KEY]: dump });
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ [TASK_STORE_KEY]: dump });
     }
   } catch (_) {}
 }
 
 async function restoreTasks() {
-  if (!chrome.storage || !chrome.storage.session) return;
+  if (!chrome.storage || !chrome.storage.local) return;
   return new Promise(resolve => {
-    chrome.storage.session.get([TASK_STORE_KEY], items => {
+    chrome.storage.local.get([TASK_STORE_KEY], items => {
       const dump = items && items[TASK_STORE_KEY];
       if (dump) {
         for (const uid of Object.keys(dump)) {
           if (!TASKS.has(uid)) {
-            const t = Object.assign({ cards: [], timer: null }, dump[uid]);
+            const t = Object.assign({}, dump[uid]);
             t.timer = null;
             TASKS.set(uid, t);
           }
@@ -56,19 +63,63 @@ function pad(num, n) {
   return s;
 }
 
+function safeDownloadName(name, fallback) {
+  const cleaned = String(name || '')
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, '_')
+    .replace(/\s+/g, ' ')
+    .replace(/^\.+|\.+$/g, '');
+  return cleaned || String(fallback || 'weibo');
+}
+
+function backupDownloadPath(filename) {
+  return DOWNLOAD_DIR + '/' + safeDownloadName(filename, 'weibo.html');
+}
+
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function nextPageDelayMs(setting) {
+  const configured = parseFloat(setting);
+  const base = Number.isFinite(configured) && configured >= 0 ? configured : 1.2;
+  const min = Math.max(0.35, base * 0.2);
+  const max = Math.max(0.65, base * 0.9);
+  let seconds = randomBetween(min, max);
+  const roll = Math.random();
+
+  if (roll < 0.08) {
+    seconds += randomBetween(1.6, 4.8);
+  } else if (roll < 0.24) {
+    seconds += randomBetween(0.4, 1.3);
+  }
+
+  return Math.round(seconds * 1000);
+}
+
 async function fetchJSON(url, params) {
   const usp = new URLSearchParams(params || {});
   const full = usp.toString() ? url + '?' + usp.toString() : url;
-  const res = await fetch(full, {
-    credentials: 'include',
-    referrer: 'https://m.weibo.cn/',
-    referrerPolicy: 'strict-origin-when-cross-origin',
-    headers: {
-      Accept: 'application/json, text/plain, */*',
-      'X-Requested-With': 'XMLHttpRequest',
-      'MWeibo-Pwa': '1'
-    }
-  });
+  let res;
+  try {
+    res = await fetch(full, {
+      credentials: 'include',
+      referrer: 'https://m.weibo.cn/',
+      referrerPolicy: 'strict-origin-when-cross-origin',
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        'X-Requested-With': 'XMLHttpRequest',
+        'MWeibo-Pwa': '1'
+      }
+    });
+  } catch (e) {
+    // 网络层错误（DNS / 连接被拒 / 超时 等）
+    throw new Error('NETWORK: ' + (e.message || 'fetch failed'));
+  }
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
@@ -178,11 +229,17 @@ async function downloadHTML(filename, content) {
   const b64 = btoa(unescape(encodeURIComponent(content)));
   const dataUrl = 'data:text/html;charset=utf-8;base64,' + b64;
   return new Promise((resolve, reject) => {
+    DOWNLOAD_FILENAME_QUEUE.push(filename);
     chrome.downloads.download(
       { url: dataUrl, filename: filename, saveAs: false, conflictAction: 'uniquify' },
       id => {
-        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-        else resolve(id);
+        if (chrome.runtime.lastError) {
+          removeQueuedFilename(filename);
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          setTimeout(() => removeQueuedFilename(filename), 30000);
+          resolve(id);
+        }
       }
     );
   });
@@ -196,7 +253,7 @@ async function flushTask(task, suffix) {
   parts.push(htmlFoot());
   const html = parts.join('');
   const n = task.total > 50000 ? 3 : 2;
-  const filename = (task.username || task.uid) + '_' + pad(task.htmlIndex, n) + (suffix || '') + '.html';
+  const filename = backupDownloadPath(safeDownloadName(task.username, task.uid) + '_' + pad(task.htmlIndex, n) + (suffix || '') + '.html');
   try {
     await downloadHTML(filename, html);
   } catch (err) {
@@ -207,7 +264,6 @@ async function flushTask(task, suffix) {
 }
 
 async function fetchProfile(uid) {
-  // 走 getIndex 的用户信息容器（1005{05}{uid}），profile/info 已被风控
   const res = await fetchJSON('https://m.weibo.cn/api/container/getIndex', {
     type: 'uid',
     value: uid,
@@ -225,7 +281,6 @@ async function fetchProfile(uid) {
     username: u.screen_name || String(u.id),
     avatar: u.profile_image_url || u.avatar_hd || '',
     total: total,
-    // 个人主页时间线固定为 107603{uid}
     containerid: '107603' + u.id
   };
 }
@@ -264,6 +319,35 @@ async function maybeExpandLong(mblog) {
   }
 }
 
+async function expandLongTexts(mblogs) {
+  const batchSize = 3;
+  for (let i = 0; i < mblogs.length; i += batchSize) {
+    const batch = mblogs.slice(i, i + batchSize);
+    await Promise.all(batch.map(m => maybeExpandLong(m).catch(() => {})));
+    if (i + batchSize < mblogs.length) {
+      await wait(randomBetween(80, 260));
+    }
+  }
+}
+
+// ---------- 倒退重试 ----------
+// 根据已重试次数计算下次重试等待分钟数（递增退避）
+function nextRetryMinutes(task) {
+  // retry 从 0 开始计数。第 0 次网络异常 → 等 1 分钟，第 1 次 → 2 分，第 2 次 → 4 分，最多 30 分钟
+  const backoff = [1, 2, 4, 8, 15, 30];
+  const idx = Math.min(task.retry || 0, backoff.length - 1);
+  return backoff[idx];
+}
+
+// 网络失败 / 接口异常 统一处理
+function handlePageError(task) {
+  task.retry = (task.retry || 0) + 1;
+  const mins = nextRetryMinutes(task);
+  const tip = mins + '分钟后自动重试（第' + task.retry + '次）';
+  pushProgress({ uid: task.uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: tip });
+  scheduleRetry(task.uid, mins);
+}
+
 async function runLoop(uid) {
   const task = TASKS.get(uid);
   if (!task || task.stopped) return;
@@ -272,12 +356,17 @@ async function runLoop(uid) {
   try {
     data = await fetchPage(task.containerid, task.page, task.uid);
   } catch (err) {
-    pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '5分钟后自动重试' });
-    scheduleRetry(uid, 5);
+    // 如果是网络层错误，保留已抓取的微博数不变，仅递增退避重试
+    if (err && err.message && err.message.startsWith('NETWORK:')) {
+      handlePageError(task);
+    } else {
+      // 接口业务错误（ok != 1 等）
+      handlePageError(task);
+    }
     return;
   }
 
-  if (task.stopped) return;
+  if (task.stopped) return; // 可能在等待期间被结束
 
   const cards = (data.cards || []).filter(c => c && c.card_type === 9 && c.mblog);
   if (data.cardlistInfo && data.cardlistInfo.total) task.total = data.cardlistInfo.total;
@@ -296,20 +385,21 @@ async function runLoop(uid) {
       pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '完成' });
       task.stopped = true;
       TASKS.delete(uid);
+      clearTaskStore(uid);
     } else {
-      pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '5分钟后重试第' + task.retry + '次' });
-      scheduleRetry(uid, 5);
+      const mins = nextRetryMinutes(task);
+      pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: mins + '分钟后重试（第' + task.retry + '次）' });
+      scheduleRetry(uid, mins);
     }
     return;
   }
 
+  // 成功拉到数据 → 重置网络重试计数
   task.retry = 0;
   task.num += cards.length;
 
   const mblogs = cards.map(c => c.mblog);
-  for (const m of mblogs) {
-    try { await maybeExpandLong(m); } catch (_) {}
-  }
+  await expandLongTexts(mblogs);
 
   task.cards.push(...mblogs);
   task.page += 1;
@@ -322,17 +412,39 @@ async function runLoop(uid) {
 
   pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '下载中' });
 
-  const delay = parseFloat(opts.DELAY_PAGE) || 3;
   persistTasks();
-  task.timer = setTimeout(() => runLoop(uid), (delay + Math.random() * 4) * 1000);
+  task.timer = setTimeout(() => runLoop(uid), nextPageDelayMs(opts.DELAY_PAGE));
 }
 
-async function startTask(uid) {
+// 全新开始
+async function startTask(uid, forceRestart) {
+  // 如果该 uid 有未完成任务且未要求强制重启，直接从断点继续
+  await restoreTasks();
   const existing = TASKS.get(uid);
+  if (existing && !forceRestart) {
+    // 继续已有任务
+    if (existing.stopped) existing.stopped = false;
+    if (existing.timer) clearTimeout(existing.timer);
+    try {
+      const profile = await fetchProfile(uid);
+      existing.username = profile.username;
+      existing.avatar = profile.avatar;
+      existing.total = profile.total || existing.total;
+      existing.containerid = profile.containerid || existing.containerid;
+      persistTasks();
+    } catch (_) {}
+    pushProgress({ uid: uid, name: existing.username, avatar: existing.avatar, num: existing.num, total: existing.total, tip: '继续备份中' });
+    runLoop(uid);
+    return;
+  }
+
+  // 清理旧任务
   if (existing) {
     if (existing.timer) clearTimeout(existing.timer);
     existing.stopped = true;
+    TASKS.delete(uid);
   }
+
   let profile;
   try {
     profile = await fetchProfile(uid);
@@ -371,6 +483,35 @@ async function stopAll() {
   persistTasks();
 }
 
+// 查询某 uid 是否有未完成任务（给 popup 用）
+async function getTaskState(uid) {
+  await restoreTasks();
+  const t = TASKS.get(uid);
+  if (t && !t.stopped) {
+    return {
+      hasTask: true,
+      name: t.username,
+      avatar: t.avatar,
+      num: t.num,
+      total: t.total
+    };
+  }
+  return { hasTask: false };
+}
+
+function clearTaskStore(uid) {
+  if (!chrome.storage || !chrome.storage.local) return;
+  chrome.storage.local.get([TASK_STORE_KEY], items => {
+    const dump = items && items[TASK_STORE_KEY];
+    if (dump) {
+      delete dump[uid];
+      chrome.storage.local.set({ [TASK_STORE_KEY]: dump });
+    }
+  });
+}
+
+// ---------- Message handling ----------
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (!request) return false;
   switch (request.type) {
@@ -379,7 +520,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (!uid) {
         pushFail('请提供 UID');
       } else {
-        startTask(String(uid).trim());
+        startTask(String(uid).trim(), !!request.data.forceRestart);
       }
       sendResponse('ok');
       return false;
@@ -392,17 +533,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (LAST_PROGRESS) broadcast({ type: 'wei_process', data: LAST_PROGRESS });
       sendResponse('ok');
       return false;
+    case 'get_task_state': {
+      const uid = request.data && request.data.uid;
+      if (uid) {
+        getTaskState(uid).then(state => sendResponse(state));
+        return true; // async
+      }
+      sendResponse({ hasTask: false });
+      return false;
+    }
     case 'option':
       chrome.runtime.openOptionsPage();
       sendResponse('ok');
-      return false;
-    case 'detect_uid':
-      sendResponse({ ok: true });
       return false;
     default:
       return false;
   }
 });
+
+if (chrome.downloads && chrome.downloads.onDeterminingFilename) {
+  chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+    if (!item || !item.url || item.url.indexOf('data:text/html') !== 0) return;
+    const filename = DOWNLOAD_FILENAME_QUEUE.shift();
+    if (!filename) return;
+    suggest({ filename: filename, conflictAction: 'uniquify' });
+  });
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   ensureDefaults();
