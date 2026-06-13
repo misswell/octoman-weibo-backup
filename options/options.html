@@ -1,52 +1,63 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <link rel="stylesheet" type="text/css" href="/jquery/bootstrap.css"/>
-    <link rel="stylesheet" type="text/css" href="/options/options.css"/>
-    <title>Octoman 微博备份 - 选项</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="/options/options.css"/>
+<title>Octoman 微博备份 - 选项</title>
 </head>
 <body>
-<div id="alert" class="alert alert-success alert-dismissible" hidden style="margin-top:20px;">
-    <button type="button" class="close" data-dismiss="alert"></button>
-    <strong>保存成功!</strong>
-</div>
-<div class="all" id="login_check">
-    <table class="table table-bordered">
-        <tr>
-            <td style="vertical-align: middle">存档间隔（每多少条合并一个 html）</td>
-            <td><input type="text" class="form-control" id="per_page" value=""/></td>
-            <td><input class="btn btn-default" type="button" id="per_page_btn" value="保存"/></td>
-        </tr>
-        <tr>
-            <td style="vertical-align: middle">转评赞栏</td>
-            <td>
-                <select class="form-control" id="comment_row">
-                    <option value="1">保留</option>
-                    <option value="2">去除</option>
-                </select>
-            </td>
-            <td><input class="btn btn-default" type="button" id="comment_row_btn" value="保存"/></td>
-        </tr>
-        <tr>
-            <td style="vertical-align: middle">预览图片</td>
-            <td>
-                <select class="form-control" id="pic_show">
-                    <option value="1">缩略图</option>
-                    <option value="2">大图</option>
-                </select>
-            </td>
-            <td><input class="btn btn-default" type="button" id="pic_show_btn" value="保存"/></td>
-        </tr>
-        <tr>
-            <td style="vertical-align: middle">翻页基础间隔（秒）</td>
-            <td><input type="text" class="form-control" id="delay_page" value=""/></td>
-            <td><input class="btn btn-default" type="button" id="delay_page_btn" value="保存"/></td>
-        </tr>
-    </table>
-</div>
-<script src="/utils/config.js" type="text/javascript" charset="utf-8"></script>
-<script src="/options/options.js" type="text/javascript" charset="utf-8"></script>
+<header class="opt-header">
+  <h1>⚙️ 备份选项</h1>
+</header>
+
+<main class="opt-main">
+  <div class="toast" id="toast" hidden></div>
+
+  <div class="card">
+    <div class="card-row">
+      <label class="card-label" for="per_page">存档间隔</label>
+      <div class="card-field">
+        <input id="per_page" type="text" class="input" placeholder="500"/>
+        <span class="field-hint">每多少条合并一个 html</span>
+      </div>
+      <button id="per_page_btn" class="btn-save">保存</button>
+    </div>
+
+    <div class="card-row">
+      <label class="card-label" for="comment_row">转评赞栏</label>
+      <div class="card-field">
+        <select id="comment_row" class="select">
+          <option value="1">保留</option>
+          <option value="2">去除</option>
+        </select>
+      </div>
+      <button id="comment_row_btn" class="btn-save">保存</button>
+    </div>
+
+    <div class="card-row">
+      <label class="card-label" for="pic_show">预览图片</label>
+      <div class="card-field">
+        <select id="pic_show" class="select">
+          <option value="1">缩略图</option>
+          <option value="2">大图</option>
+        </select>
+      </div>
+      <button id="pic_show_btn" class="btn-save">保存</button>
+    </div>
+
+    <div class="card-row">
+      <label class="card-label" for="delay_page">翻页间隔</label>
+      <div class="card-field">
+        <input id="delay_page" type="text" class="input" placeholder="3"/>
+        <span class="field-hint">秒（支持小数）</span>
+      </div>
+      <button id="delay_page_btn" class="btn-save">保存</button>
+    </div>
+  </div>
+</main>
+
+<script src="/utils/config.js"></script>
+<script src="/options/options.js"></script>
 </body>
 </html>

@@ -1,38 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <title>Octoman微博备份</title>
-    <meta http-equiv="content-type" content="txt/html; charset=utf-8"/>
-    <link rel="stylesheet" type="text/css" href="popup.css"/>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="popup.css"/>
+<title>Octoman 微博备份</title>
 </head>
 <body>
-<div id="login_suc" style="display: block;">
-    <ul class="process">
-        <div style="position: relative;width:100%;">
-            <span>提示：请勿同时保存多个用户，会限制访问</span>
-            <img src="/img/warning.png" class="warning-icon"/>
-        </div>
-        <span class="warning-more">
-            <div>1.需要登录微博 (m.weibo.cn 或 weibo.com)</div>
-            <div>2.保存过程中不建议操作微博</div>
-            <div>3.每 N 条微博存为一个 html 文件</div>
-            <div>4.如想存图到本地，可打开 html 文件后右键另存为</div>
-            <div>5.接口限制，太多可能下不全</div>
-            <div>6.时间估算 1 条 1 秒</div>
-        </span>
-    </ul>
-    <ul class="uid-input">
-        <label for="uid">微博 UID：</label>
-        <input type="text" id="uid" placeholder="纯数字 UID，如 1669879400" autocomplete="off"/>
-        <input type="button" class="btn" id="start" value="开始备份"/>
-        <div class="uid-hint" id="uid-hint">提示：先在 weibo.com 登录后再点开始</div>
-    </ul>
-    <ul class="option-line">
-        <a href="https://blog.liuguofeng.com/p/5670" target="_blank" id="author">问题反馈</a>
-        <a href="javascript:;" id="option">选项</a>
-        <input type="button" class="btn" id="stop-all" value="立即停止"/>
-    </ul>
-</div>
-<script type="text/javascript" src="popup.js"></script>
+<header class="header">
+  <img class="logo" src="/img/logo.png" alt="logo" width="24" height="24"/>
+  <span class="brand">Octoman 微博备份</span>
+</header>
+
+<section class="tips-box">
+  <div class="tips-trigger">
+    <span class="tips-icon">⚠️</span>
+    <span>请勿同时保存多个用户，会限制访问</span>
+  </div>
+  <div class="tips-detail">
+    <ol>
+      <li>需要登录微博（m.weibo.cn 或 weibo.com）</li>
+      <li>保存过程中不建议操作微博</li>
+      <li>每 N 条微博存为一个 html 文件</li>
+      <li>如需存图到本地，可打开 html 文件后右键另存为</li>
+      <li>接口限制，太多可能下不全</li>
+      <li>时间估算 ≈ 1 条 / 秒</li>
+    </ol>
+  </div>
+</section>
+
+<section class="form-row">
+  <label class="label" for="uid">微博 UID</label>
+  <div class="input-group">
+    <input id="uid" type="text" placeholder="纯数字 UID，如 1669879400" autocomplete="off"/>
+    <button id="start" class="btn btn-primary">开始备份</button>
+  </div>
+  <p class="uid-hint" id="uid-hint">提示：先在 weibo.com 登录后再点开始</p>
+</section>
+
+<section class="progress-section" id="progress-section">
+  <div class="progress-list" id="progress-list"></div>
+</section>
+
+<footer class="footer">
+  <a class="link" href="https://blog.liuguofeng.com/p/5670" target="_blank">问题反馈</a>
+  <a class="link" href="#" id="option">选项</a>
+  <button id="stop-all" class="btn btn-stop">立即停止</button>
+</footer>
+
+<script src="popup.js"></script>
 </body>
 </html>

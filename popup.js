@@ -13,19 +13,16 @@ function detectUidFromUrl(url) {
   if (!url) return '';
   try {
     const u = new URL(url);
-    if (!/weibo\.(com|cn)$/.test(u.hostname.replace(/^.*\./, '')) && !/weibo\.(com|cn)/.test(u.hostname)) {
+    const host = u.hostname;
+    if (!/weibo\.(com|cn)$/.test(host.replace(/^.*\./, '')) && !/weibo\.(com|cn)/.test(host)) {
       return '';
     }
-    // weibo.com/u/123456 或 weibo.cn/u/123456
     let m = u.pathname.match(/\/u\/(\d{5,})/);
     if (m) return m[1];
-    // m.weibo.cn/profile/123456
     m = u.pathname.match(/\/profile\/(\d{5,})/);
     if (m) return m[1];
-    // m.weibo.cn/u/123456
     m = u.pathname.match(/\/p\/(\d{5,})/);
     if (m) return m[1];
-    // ?uid=xxx
     const uid = u.searchParams.get('uid');
     if (uid && /^\d+$/.test(uid)) return uid;
     return '';
@@ -45,36 +42,41 @@ async function prefillUid() {
   });
 }
 
-function ensureProcessRow(name) {
-  const id = 'process_' + (name || 'task');
-  let li = document.getElementById(id);
-  if (!li) {
-    li = document.createElement('li');
-    li.id = id;
-    li.className = 'process-li';
-    document.querySelector('.process').appendChild(li);
+function ensureProgressItem(name) {
+  const id = 'p_' + (name || 'task');
+  let item = document.getElementById(id);
+  if (!item) {
+    item = document.createElement('div');
+    item.id = id;
+    item.className = 'progress-item';
+    const list = $('#progress-list');
+    if (list) list.appendChild(item);
   }
-  return li;
+  return item;
 }
 
 function renderProgress(data) {
   if (!data) return;
-  const li = ensureProcessRow(data.name);
-  const total = data.total != null ? data.total : '-';
+  const item = ensureProgressItem(data.name);
+  const total = data.total != null ? data.total : 0;
   const num = data.num != null ? data.num : 0;
   const tip = data.tip || '';
-  li.innerHTML = ''
-    + '<div class="album-info">'
-    + (data.avatar ? '<img class="process-pic" src="' + data.avatar + '"/>' : '')
-    + '<span>' + (data.name || '') + '</span>'
-    + '</div>'
-    + '<span class="pr">（' + tip + '）' + num + ' / ' + total + '</span>';
+  const pct = total > 0 ? Math.min(100, Math.round((num / total) * 100)) : 0;
+
+  item.innerHTML =
+    (data.avatar ? '<img class="progress-avatar" src="' + data.avatar + '" alt=""/>' : '') +
+    '<div class="progress-info">' +
+      '<div class="progress-name">' + (data.name || '') + '</div>' +
+      '<div class="progress-bar-wrap"><div class="progress-bar" style="width:' + pct + '%"></div></div>' +
+    '</div>' +
+    '<span class="progress-count">' + num + ' / ' + (total || '-') + '</span>' +
+    (tip ? '<span class="progress-tip">' + tip + '</span>' : '');
 }
 
 function renderFail(text) {
   const hint = $('#uid-hint');
   if (hint) {
-    hint.style.color = '#d9534f';
+    hint.style.color = '#e74c3c';
     hint.textContent = text || '失败';
   }
 }
@@ -102,20 +104,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     send('stop_all');
   });
 
-  $('#option').addEventListener('click', () => {
+  $('#option').addEventListener('click', (e) => {
+    e.preventDefault();
     if (chrome.runtime.openOptionsPage) {
       chrome.runtime.openOptionsPage();
     } else {
       window.open(chrome.runtime.getURL('options/options.html'));
     }
   });
-
-  const warn = document.querySelector('.warning-icon');
-  const more = document.querySelector('.warning-more');
-  if (warn && more) {
-    warn.addEventListener('mouseover', () => { more.style.display = 'block'; });
-    warn.addEventListener('mouseleave', () => { more.style.display = 'none'; });
-  }
 });
 
 chrome.runtime.onMessage.addListener((res, sender, sendResponse) => {
