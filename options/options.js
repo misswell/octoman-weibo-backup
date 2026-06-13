@@ -1,32 +1,58 @@
-function show_page() {
-    $("#per_page").val(config_get(PER_PAGE));
-    $("#comment_row").val(config_get(COMMENT_ROW));
-    $("#pic_show").val(config_get(PIC_SHOW));
+function $(sel) { return document.querySelector(sel); }
+
+let toastTimer = null;
+function toast(msg) {
+  const el = $('#alert');
+  if (!el) return;
+  el.classList.remove('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  el.querySelector('strong').textContent = msg || '保存成功！';
+  el.hidden = false;
+  el.classList.add('show');
+  toastTimer = setTimeout(() => {
+    el.classList.remove('show');
+    el.hidden = true;
+  }, 1200);
 }
 
-function toast(msg){
-    $("#alert").removeClass('show');
-    clearTimeout(window['option_stid']);
-    $("#alert strong").html(msg||"保存成功！");
-    $("#alert").addClass('show');
-    window['option_stid'] = setTimeout(()=>{
-        $("#alert").removeClass('show');
-    },1000)
+async function fillPage() {
+  const cfg = await configGetAll();
+  $('#per_page').value = cfg.PER_PAGE;
+  $('#comment_row').value = cfg.COMMENT_ROW;
+  $('#pic_show').value = cfg.PIC_SHOW;
+  $('#delay_page').value = cfg.DELAY_PAGE;
 }
-$("#per_page_btn").click(()=>{
-    var val = $("#per_page").val();
-    config_set({[PER_PAGE]:val});
-    toast("存档间隔保存成功！")
-});
-$("#comment_row_btn").click(()=>{
-    var val = $("#comment_row").val();
-    config_set({[COMMENT_ROW]:val});
-    toast("转评赞栏保存成功！")
-});
-$("#pic_show_btn").click(()=>{
-    var val = $("#pic_show").val();
-    config_set({[PIC_SHOW]:val});
-    toast("预览图片保存成功！")
-});
 
-show_page();
+document.addEventListener('DOMContentLoaded', async () => {
+  await fillPage();
+
+  $('#per_page_btn').addEventListener('click', async () => {
+    const v = String($('#per_page').value || '').trim();
+    if (!/^\d+$/.test(v) || +v <= 0) {
+      toast('请输入正整数');
+      return;
+    }
+    await configSet({ PER_PAGE: v });
+    toast('存档间隔保存成功！');
+  });
+
+  $('#comment_row_btn').addEventListener('click', async () => {
+    await configSet({ COMMENT_ROW: $('#comment_row').value });
+    toast('转评赞栏保存成功！');
+  });
+
+  $('#pic_show_btn').addEventListener('click', async () => {
+    await configSet({ PIC_SHOW: $('#pic_show').value });
+    toast('预览图片保存成功！');
+  });
+
+  $('#delay_page_btn').addEventListener('click', async () => {
+    const v = String($('#delay_page').value || '').trim();
+    if (!/^\d+(\.\d+)?$/.test(v) || +v < 0) {
+      toast('请输入非负数字');
+      return;
+    }
+    await configSet({ DELAY_PAGE: v });
+    toast('翻页间隔保存成功！');
+  });
+});

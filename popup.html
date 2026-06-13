@@ -1,43 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>
-        Blacklist Checking
-    </title>
+    <title>Octoman微博备份</title>
     <meta http-equiv="content-type" content="txt/html; charset=utf-8"/>
     <link rel="stylesheet" type="text/css" href="popup.css"/>
-    <script type="text/javascript" src="jquery/jquery-3.4.1.js"></script>
-    <script type="text/javascript" src="popup.js"></script>
 </head>
 <body>
 <div id="login_suc" style="display: block;">
     <ul class="process">
         <div style="position: relative;width:100%;">
             <span>提示：请勿同时保存多个用户，会限制访问</span>
-            <img src="/img/warning.png" class="warning-icon"></div>
+            <img src="/img/warning.png" class="warning-icon"/>
+        </div>
         <span class="warning-more">
-            <div>1.需要登录微博</div>
+            <div>1.需要登录微博 (m.weibo.cn 或 weibo.com)</div>
             <div>2.保存过程中不建议操作微博</div>
-            <div>3.每500条微博存为一个html文件,可用Chrome打开</div>
-            <div>4.如想存图到本地，可打开html文件后右键另存为</div>
-            <div>5.微博接口限制，太多可能会下不全</div>
-            <div>6.时间估算1条1秒</div>
+            <div>3.每 N 条微博存为一个 html 文件</div>
+            <div>4.如想存图到本地，可打开 html 文件后右键另存为</div>
+            <div>5.接口限制，太多可能下不全</div>
+            <div>6.时间估算 1 条 1 秒</div>
         </span>
     </ul>
-    <ul class="select-position" hidden><span class="user-list"></span>
-        <span class="user-select"></span></ul>
-    <ul class="name" hidden>当前用户：</ul>
-    <ul class="album-loading">
-        <div id="load-timeout" class="underline"><img src="/img/loading.gif" alt=""></div>
-    </ul>
-    <ul class="album-list">
-
+    <ul class="uid-input">
+        <label for="uid">微博 UID：</label>
+        <input type="text" id="uid" placeholder="纯数字 UID，如 1669879400" autocomplete="off"/>
+        <input type="button" class="btn" id="start" value="开始备份"/>
+        <div class="uid-hint" id="uid-hint">提示：先在 weibo.com 登录后再点开始</div>
     </ul>
     <ul class="option-line">
-        <a href="javascript:;" id="author">问题反馈</a>
+        <a href="https://blog.liuguofeng.com/p/5670" target="_blank" id="author">问题反馈</a>
         <a href="javascript:;" id="option">选项</a>
-        <input type="button" class="btn" id="stop-all" value="立即停止">
+        <input type="button" class="btn" id="stop-all" value="立即停止"/>
     </ul>
 </div>
+<script type="text/javascript" src="popup.js"></script>
 </body>
 </html>

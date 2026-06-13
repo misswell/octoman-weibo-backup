@@ -1,178 +1,130 @@
-document.addEventListener('DOMContentLoaded', function () {
-    events.current_page();
+function $(sel) { return document.querySelector(sel); }
 
-    $('body').on('click', '.item', function (elm) {
-
-        let ratio = $("#ratio").val();
-        let open = $("#open-folder:checked").val();
-        let down_allow = $("#con-current").val();
-
-        $(this).find('.selected').show();
-        $(this).find('.complete').show().text('等待下载');
-
-        let album_id = $(this).data('albid');
-        let uid = $(this).data('uid');
-        let caption = $(this).data('caption');
-        let type = $(this).data('type');
-        let name = $(this).data('name');
-
-        let data = {
-            album_id: album_id,
-            uid: uid,
-            caption: caption,
-            type: type,
-            name: name,
-            ratio: ratio,
-            open: open,
-            down_allow: down_allow,
-        };
-        events.down_album(data)
+function send(type, data) {
+  return new Promise(resolve => {
+    chrome.runtime.sendMessage({ type: type, data: data }, res => {
+      void chrome.runtime.lastError;
+      resolve(res);
     });
-
-    $('body').on('change', 'select.album-select', function (elm) {
-        let uid2 = $(this).val();
-        let name2 = $.trim($(this).find('option:selected').text());
-        $('.album-loading').show();
-        $('.album-list').hide();
-        events.user_info({uid: uid2, name: name2})
-    });
-
-    $('body').on('click', '.wei-save', function () {
-        let containerid = $(this).data('containerid');
-        let uid = $(this).data('uid');
-        let username = $(this).data('username');
-        $(this).addClass('disable');
-        $(this).removeClass('wei-save');
-        events.wei_save({containerid: containerid, user: {uid: uid, username: username}});
-    });
-
-    $("#stop-all").click(function () {
-        $(this).addClass('disable');
-        events.todo('stop_all');
-    });
-
-    $("#author").click(function () {
-        window.open('https://blog.liuguofeng.com/p/5670')
-    });
-
-    $('body').on('click', '#load-timeout', function () {
-        window.open('https://m.weibo.cn')
-    });
-
-    events.last_process();
-
-    setTimeout(function () {
-        if (!$('.album-loading').is(':hidden')) {
-            $("#load-timeout").html(' 验证出错，请点击此链接，然后返回重试')
-        }
-    }, 3000);
-
-    $(".warning-icon").mouseover(function () {
-        $(".warning-more").slideDown();
-    });
-    $(".warning-icon").mouseleave(function () {
-        $(".warning-more").slideUp();
-    });
-
-
-    $("#option").click(function () {
-        events.option()
-    });
-});
-
-var bg = chrome.extension.getBackgroundPage();
-
-var events = {
-
-    option: () => {
-        typeof(chrome.app.isInstalled) !== "undefined" && chrome.runtime.sendMessage({type: 'option'})
-    },
-        current_page: () => {
-            chrome.runtime.sendMessage({type: 'current_page'})
-        },
-        user_info: (data) => {
-            chrome.runtime.sendMessage({type: 'user_info', data: data}, function () {
-
-            })
-        },
-        wei_save: (data) => {
-            chrome.runtime.sendMessage({type: 'wei_save', data: data}, function () {
-
-            })
-        },
-        last_process: () => {
-            chrome.runtime.sendMessage({type: 'last_process'}, function () {
-
-            })
-        },
-        todo:(data)=>{
-            chrome.runtime.sendMessage({type: data}, function () {
-
-            })
-        },
-    }
-
-;
-
-chrome.runtime.onMessage.addListener(function (res, sender, sendResponse) {
-    console.log('popup onMessage Listener', res);
-    if (res && res.type === 'more_url') {
-        let data = res.data;
-        let user = data.user;
-        let containerid = data.containerid;
-
-        $('.name').html('<span class="to-album" data-alid="' + user.id + '">当前用户：' + user.screen_name + ' UID：' + user.id + '</span>');
-
-
-        $('.album-list').html('<input type="button" class="wei-save" ' +
-            'data-containerid="' + containerid + '"  ' +
-            'data-uid="' + user.id + '" ' +
-            'data-username="' + user.screen_name + '" ' +
-            'value="保存">').show();
-
-        $('.album-loading').hide();
-        suc_show();
-    } else if (res && res.type === 'user_list') {
-        let list = res.data;
-        let html = '';
-        html += '<select class="album-select">';
-        for (let i in list) {
-            html += '<option value="' + list[i]['uid'] + '">' + list[i]['name'] + '</option>';
-        }
-        html += '</select>';
-        $('.user-list').html(html);
-        events.user_info({uid: list[0]['uid'], name: list[0]['name'], avatar: list[0]['']});
-    } else if (res && res.type === 'wei_process') {
-        let data = res.data;
-        let total = data.total;
-        let num = data.num;
-        let tip = data.tip || '';
-        let name = data.name;
-        let avatar = data.avatar;
-        if ($('.process #process' + name).length == 0) {
-            $('.process').append('<li class="process-li" id="process' + name + '">');
-        }
-        let html = '';
-        html += '<div class="album-info" ' +
-            '><img class="process-pic" src="' + avatar + '"/>';
-        html += '<span>' + name + '</span></div>';
-        html += '<span class="pr">' + "（" + tip + "）" + num + ' / ' + total + '</span></li>';
-        $('.process #process' + name).html(html)
-    } else if (res && res.type === 'wei_fail') {
-        $('.album-list').html(res.data).show();
-        $('.album-loading').hide();
-        err_hide();
-    }
-    sendResponse('done');
-    return true
-});
-
-function err_hide() {
-    $('.select-position').hide();
-    $('.name').hide();
+  });
 }
 
-function suc_show() {
-    $('.select-position').show();
-    $('.name').show();
+function detectUidFromUrl(url) {
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    if (!/weibo\.(com|cn)$/.test(u.hostname.replace(/^.*\./, '')) && !/weibo\.(com|cn)/.test(u.hostname)) {
+      return '';
+    }
+    // weibo.com/u/123456 或 weibo.cn/u/123456
+    let m = u.pathname.match(/\/u\/(\d{5,})/);
+    if (m) return m[1];
+    // m.weibo.cn/profile/123456
+    m = u.pathname.match(/\/profile\/(\d{5,})/);
+    if (m) return m[1];
+    // m.weibo.cn/u/123456
+    m = u.pathname.match(/\/p\/(\d{5,})/);
+    if (m) return m[1];
+    // ?uid=xxx
+    const uid = u.searchParams.get('uid');
+    if (uid && /^\d+$/.test(uid)) return uid;
+    return '';
+  } catch (_) {
+    return '';
+  }
 }
+
+async function prefillUid() {
+  return new Promise(resolve => {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      const tab = tabs && tabs[0];
+      const uid = detectUidFromUrl(tab && tab.url);
+      if (uid) $('#uid').value = uid;
+      resolve();
+    });
+  });
+}
+
+function ensureProcessRow(name) {
+  const id = 'process_' + (name || 'task');
+  let li = document.getElementById(id);
+  if (!li) {
+    li = document.createElement('li');
+    li.id = id;
+    li.className = 'process-li';
+    document.querySelector('.process').appendChild(li);
+  }
+  return li;
+}
+
+function renderProgress(data) {
+  if (!data) return;
+  const li = ensureProcessRow(data.name);
+  const total = data.total != null ? data.total : '-';
+  const num = data.num != null ? data.num : 0;
+  const tip = data.tip || '';
+  li.innerHTML = ''
+    + '<div class="album-info">'
+    + (data.avatar ? '<img class="process-pic" src="' + data.avatar + '"/>' : '')
+    + '<span>' + (data.name || '') + '</span>'
+    + '</div>'
+    + '<span class="pr">（' + tip + '）' + num + ' / ' + total + '</span>';
+}
+
+function renderFail(text) {
+  const hint = $('#uid-hint');
+  if (hint) {
+    hint.style.color = '#d9534f';
+    hint.textContent = text || '失败';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async function () {
+  await prefillUid();
+  send('last_process');
+
+  $('#start').addEventListener('click', () => {
+    const uid = ($('#uid').value || '').trim();
+    if (!/^\d{5,}$/.test(uid)) {
+      renderFail('请输入正确的纯数字 UID');
+      return;
+    }
+    const hint = $('#uid-hint');
+    if (hint) {
+      hint.style.color = '';
+      hint.textContent = '已开始抓取，可以关闭此弹窗，进度会继续';
+    }
+    send('wei_save', { uid: uid });
+  });
+
+  $('#stop-all').addEventListener('click', function () {
+    this.classList.add('disable');
+    send('stop_all');
+  });
+
+  $('#option').addEventListener('click', () => {
+    if (chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage();
+    } else {
+      window.open(chrome.runtime.getURL('options/options.html'));
+    }
+  });
+
+  const warn = document.querySelector('.warning-icon');
+  const more = document.querySelector('.warning-more');
+  if (warn && more) {
+    warn.addEventListener('mouseover', () => { more.style.display = 'block'; });
+    warn.addEventListener('mouseleave', () => { more.style.display = 'none'; });
+  }
+});
+
+chrome.runtime.onMessage.addListener((res, sender, sendResponse) => {
+  if (!res) return false;
+  if (res.type === 'wei_process') {
+    renderProgress(res.data);
+  } else if (res.type === 'wei_fail') {
+    renderFail(res.data);
+  }
+  sendResponse && sendResponse('done');
+  return false;
+});

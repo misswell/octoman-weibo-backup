@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="stylesheet" type="text/css" href="/jquery/bootstrap.css"/>
     <link rel="stylesheet" type="text/css" href="/options/options.css"/>
-    <script type="text/javascript" src="/jquery/jquery-3.4.1.js"></script>
-    <script type="text/javascript" src="/utils/config.js"></script>
-    <script type="text/javascript" src="/utils/common.js"></script>
-    <title>test</title>
+    <title>Octoman 微博备份 - 选项</title>
 </head>
 <body>
 <div id="alert" class="alert alert-success alert-dismissible" hidden style="margin-top:20px;">
@@ -18,33 +15,38 @@
 <div class="all" id="login_check">
     <table class="table table-bordered">
         <tr>
-            <td style="vertical-align: middle">存档间隔</td>
-            <td ><input type="text" class="form-control"  id="per_page" value=""></td>
-            <td ><input class="btn btn-default" type="button" id="per_page_btn" value="保存"></td>
+            <td style="vertical-align: middle">存档间隔（每多少条合并一个 html）</td>
+            <td><input type="text" class="form-control" id="per_page" value=""/></td>
+            <td><input class="btn btn-default" type="button" id="per_page_btn" value="保存"/></td>
         </tr>
         <tr>
             <td style="vertical-align: middle">转评赞栏</td>
-            <td >
+            <td>
                 <select class="form-control" id="comment_row">
                     <option value="1">保留</option>
                     <option value="2">去除</option>
                 </select>
             </td>
-            <td ><input class="btn btn-default" type="button" id="comment_row_btn" value="保存"></td>
+            <td><input class="btn btn-default" type="button" id="comment_row_btn" value="保存"/></td>
         </tr>
         <tr>
             <td style="vertical-align: middle">预览图片</td>
-            <td >
+            <td>
                 <select class="form-control" id="pic_show">
                     <option value="1">缩略图</option>
                     <option value="2">大图</option>
                 </select>
             </td>
-            <td ><input class="btn btn-default" type="button" id="pic_show_btn" value="保存"></td>
+            <td><input class="btn btn-default" type="button" id="pic_show_btn" value="保存"/></td>
+        </tr>
+        <tr>
+            <td style="vertical-align: middle">翻页基础间隔（秒）</td>
+            <td><input type="text" class="form-control" id="delay_page" value=""/></td>
+            <td><input class="btn btn-default" type="button" id="delay_page_btn" value="保存"/></td>
         </tr>
     </table>
 </div>
-</body>
+<script src="/utils/config.js" type="text/javascript" charset="utf-8"></script>
 <script src="/options/options.js" type="text/javascript" charset="utf-8"></script>
+</body>
 </html>
-

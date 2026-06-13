@@ -166,3 +166,34 @@ input.disable {
 .underline{
     text-decoration:underline ;
 }
+
+.uid-input {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.uid-input label {
+    font-size: 12px;
+    color: #333;
+    margin-right: 4px;
+}
+
+.uid-input input[type="text"] {
+    flex: 1 1 140px;
+    min-width: 0;
+    padding: 5px 8px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    outline: none;
+}
+
+.uid-input .uid-hint {
+    width: 100%;
+    font-size: 11px;
+    color: #888;
+    margin-top: 6px;
+}

@@ -1,56 +1,56 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Octoman微博备份",
-  "version": "0.1.8",
-  "description":"一键备份微博",
+  "version": "0.2.0",
+  "description": "一键备份微博",
   "background": {
-    "scripts": [
-      "jquery/jquery-3.4.1.js",
-      "utils/config.js",
-      "utils/common.js",
-      "utils/util.js",
-      "utils/date.js",
-      "background.js"
-    ]
+    "service_worker": "background.js"
   },
-  "icons":{
+  "icons": {
     "16": "img/logo.png",
     "48": "img/logo.png",
     "128": "img/logo.png"
   },
-  "browser_action": {
+  "action": {
     "default_icon": {
-      "19": "img/logo.png",
-      "38": "img/logo.png"
+      "16": "img/logo.png",
+      "48": "img/logo.png",
+      "128": "img/logo.png"
     },
     "default_title": "Octoman微博备份",
     "default_popup": "popup.html"
   },
   "permissions": [
-    "*://*.weibo.cn/*",
-    "*://*.weibo.com/*",
-    "*://*.imgram.cn/*",
-    "webRequest",
-    "webRequestBlocking"
+    "storage",
+    "downloads",
+    "tabs",
+    "alarms",
+    "declarativeNetRequest"
   ],
+  "host_permissions": [
+    "*://*.weibo.com/*",
+    "*://*.weibo.cn/*",
+    "*://*.sinaimg.cn/*",
+    "*://*.sinajs.cn/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "weibo_referer",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
   "options_page": "/options/options.html",
-  "optional_permissions": [],
   "content_scripts": [
     {
       "matches": [
-        "*://*.weibo.com/*"
+        "*://*.weibo.com/*",
+        "*://*.weibo.cn/*"
       ],
-      "js": [
-        "jquery/jquery-3.4.1.js",
-        "utils/config.js",
-        "utils/date.js",
-        "utils/util.js",
-        "utils/common.js",
-        "content/listener.js"
-      ],
-      "css": [
-      ],
-      "run_at": "document_end"
+      "js": ["content/listener.js"],
+      "run_at": "document_idle"
     }
   ]
 }
