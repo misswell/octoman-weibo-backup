@@ -1,0 +1,26 @@
+{
+  "name": "octoman-weibo-backup",
+  "version": "1.0.0",
+  "description": "<img src=\"https://blog.liuguofeng.com/wp-content/uploads/2020/02/snipaste_20200214_155227.png\" width=\"300\">",
+  "main": "background.js",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chrome": "^0.1.43",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "^6.0.3",
+    "vite": "^6.4.3"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}

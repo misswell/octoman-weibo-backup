@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "Octoman微博备份",
+  "version": "0.2.0",
+  "description": "一键备份微博",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "img/logo.png",
+    "48": "img/logo.png",
+    "128": "img/logo.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "img/logo.png",
+      "48": "img/logo.png",
+      "128": "img/logo.png"
+    },
+    "default_title": "Octoman微博备份",
+    "default_popup": "popup/index.html"
+  },
+  "permissions": [
+    "storage",
+    "downloads",
+    "tabs",
+    "alarms",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "*://*.weibo.com/*",
+    "*://*.weibo.cn/*",
+    "*://*.sinaimg.cn/*",
+    "*://*.sinajs.cn/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "weibo_referer",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "options_page": "options/index.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.weibo.com/*",
+        "*://*.weibo.cn/*"
+      ],
+      "js": ["content-listener.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
