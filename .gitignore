@@ -1,2 +1,4 @@
 .idea
 _metadata/*
+dist/
+node_modules/
