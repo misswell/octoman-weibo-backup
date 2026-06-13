@@ -7,7 +7,7 @@
 [![](https://img.shields.io/github/followers/misswell.svg?label=Follow&style=social)](https://github.com/misswell)
 [![](https://img.shields.io/badge/Follow%20@刘国峰--brightgreen.svg?logo=Sina%20Weibo&style=social)](https://weibo.com/imfon)
 
-新浪微博的备份 Chrome 浏览器扩展 （ 插件 ）
+一键备份任意微博用户的所有公开内容为本地 HTML 文件。在微博页面点击扩展图标，输入目标用户 UID，即可自动抓取并下载，离线可查看。
 
 ## 使用方法（v0.2.0 起）
 - 老版本依赖的 `weibo.com` PC 模板已下线，原扩展无法继续工作；同时 Chrome 138+ 已经停止加载 manifest v2 扩展。本仓库已经升级为 manifest v3，并改用 `m.weibo.cn` 公开接口直接拉取数据。
@@ -29,16 +29,30 @@
 
 <img src="https://blog.liuguofeng.com/wp-content/uploads/2020/02/Snipaste_2020-02-24_12-55-50.png" width="700">
 
+## 权限说明
+
+| 权限 | 用途 |
+|---|---|
+| `storage` | 保存用户配置项（存档间隔、图片大小、翻页间隔等）以及后台任务状态。 |
+| `downloads` | 将抓取到的微博内容拼接为 HTML 文件并通过浏览器下载保存到本地。 |
+| `tabs` | 读取当前标签页 URL，自动识别其中的微博用户 UID，省去手动输入。 |
+| `alarms` | 在接口限流或网络波动导致抓取中断时，设置定时重试，确保备份不丢失。 |
+| `declarativeNetRequest` | 对发往新浪图床的请求自动注入 `Referer` 头，避免备份后的 HTML 文件因防盗链显示空白图片。 |
+
+| 主机权限 | 用途 |
+|---|---|
+| `*.weibo.com` / `*.weibo.cn` | 在微博页面注入内容脚本，并复用用户的微博登录态调用公开接口拉取微博数据。 |
+| `*.sinaimg.cn` / `*.sinajs.cn` | 配合 `declarativeNetRequest` 规则，为图片请求补全 Referer，保障备份文件中图片正常显示。 |
 
 ## 其他说明
 - 必须先登录微博（`m.weibo.cn` 或 `weibo.com` 任一站点的登录态都会被自动携带）
 - 请勿同时保存多个用户，会限制访问
 - 保存过程中不建议频繁操作微博
-- 每500条微博存为一个HTML文件，可用Chrome打开
-- 如想存图到本地，可打开HTML文件后右键另存为，建议及时另存
+- 每 N 条微博存为一个 HTML 文件（默认 500 条），可用 Chrome 打开
+- 如想存图到本地，可打开 HTML 文件后右键另存为，建议及时另存
 - 微博太多会保存不全，因为新浪接口返回暂无微博
 - 显示的总数会和实际数量不一致，微博接口的问题
-- 保存的文件如果出现finish代表已经全部完成
+- 保存的文件如果出现 `_finish` 代表已经全部完成
 - 经用户反馈炸号微博也可备份，前提是能登陆看到自己的微博
 - 如出现验证失败的提示，请点击验证失败这段文字，然后重试
 - 开发版使用方法见文章中的方法二 https://www.jianshu.com/p/0ce6ab938fcf
