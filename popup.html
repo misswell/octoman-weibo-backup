@@ -15,7 +15,7 @@
 <section class="tips-box">
   <div class="tips-trigger">
     <span class="tips-icon">⚠️</span>
-    <span>请勿同时保存多个用户，会限制访问</span>
+    <span>支持多个用户排队下载，按顺序依次进行</span>
     <button id="tips-toggle" class="tips-toggle" type="button" aria-expanded="false" aria-controls="tips-detail">展开</button>
   </div>
   <div class="tips-detail" id="tips-detail">
@@ -44,9 +44,14 @@
   <p class="uid-hint" id="uid-hint">提示：先在 weibo.com 登录后再点开始</p>
 </section>
 
-<section class="progress-section" id="progress-section">
-  <div class="progress-list" id="progress-list"></div>
+<section class="queue-section" id="queue-section">
+  <div class="queue-header">
+    <span class="queue-title">下载队列</span>
+    <span class="queue-count" id="queue-count"></span>
+  </div>
+  <div class="queue-list" id="queue-list"></div>
 </section>
+
 
 <footer class="footer">
   <a class="link" href="https://blog.liuguofeng.com/p/5670" target="_blank">问题反馈</a>

@@ -4,10 +4,168 @@ importScripts('utils/config.js');
 
 const TASKS = new Map();
 let LAST_PROGRESS = null;
+let LAST_VERIFY = null;
 const ALARM_PREFIX = 'wb_retry_';
-const TASK_STORE_KEY = 'wb_tasks_v1';
+const TASK_STORE_KEY = 'wb_tasks_v2';
+const QUEUE_STORE_KEY = 'wb_queue_v1';
 const DOWNLOAD_DIR = 'WeiboBackup';
 const DOWNLOAD_FILENAME_QUEUE = [];
+
+// ========== 下载队列 ==========
+// QUEUE: 有序数组，存储 uid 顺序
+// QUEUE_STATES: Map<uid, 'active'|'paused'|'waiting'>
+let QUEUE = [];
+let QUEUE_STATES = new Map();
+let QUEUE_RUNNING = false;
+
+
+
+// 保存队列状态
+function persistQueue() {
+  try {
+    const dump = {
+      queue: QUEUE.slice(),
+      states: {}
+    };
+    for (const [uid, state] of QUEUE_STATES.entries()) {
+      dump.states[uid] = state;
+    }
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ [QUEUE_STORE_KEY]: dump });
+    }
+  } catch (_) {}
+}
+
+// 恢复队列状态
+async function restoreQueue() {
+  if (!chrome.storage || !chrome.storage.local) return;
+  return new Promise(resolve => {
+    chrome.storage.local.get([QUEUE_STORE_KEY], items => {
+      const dump = items && items[QUEUE_STORE_KEY];
+      if (dump) {
+        QUEUE = dump.queue || [];
+        QUEUE_STATES = new Map();
+        if (dump.states) {
+          for (const uid of Object.keys(dump.states)) {
+            QUEUE_STATES.set(uid, dump.states[uid]);
+          }
+        }
+      }
+      resolve();
+    });
+  });
+}
+
+// 获取队列信息（给 popup 用）
+function getQueueInfo() {
+  const items = QUEUE.map(uid => {
+    const t = TASKS.get(uid);
+    const state = QUEUE_STATES.get(uid) || 'waiting';
+    return {
+      uid: uid,
+      username: (t && t.username) || uid,
+      avatar: (t && t.avatar) || '',
+      total: (t && t.total) || 0,
+      num: (t && t.num) || 0,
+      state: state
+    };
+  });
+  return { items: items, running: QUEUE_RUNNING };
+}
+
+// 将 uid 加入队列尾部
+function enqueueUid(uid) {
+  if (!QUEUE.includes(uid)) {
+    QUEUE.push(uid);
+    QUEUE_STATES.set(uid, QUEUE_RUNNING ? 'waiting' : 'active');
+    persistQueue();
+    broadcastQueue();
+  }
+}
+
+// 从队列移除 uid
+function dequeueUid(uid) {
+  const idx = QUEUE.indexOf(uid);
+  if (idx !== -1) {
+    QUEUE.splice(idx, 1);
+    QUEUE_STATES.delete(uid);
+    persistQueue();
+    broadcastQueue();
+  }
+}
+
+// 暂停队列中的任务
+function pauseQueueItem(uid) {
+  const state = QUEUE_STATES.get(uid);
+  if (state === 'active') {
+    QUEUE_STATES.set(uid, 'paused');
+    QUEUE_RUNNING = false;
+    // 停止任务
+    const task = TASKS.get(uid);
+    if (task) {
+      task.stopped = true;
+      if (task.timer) clearTimeout(task.timer);
+      persistTasks();
+    }
+    // 取消重试定时器
+    try { chrome.alarms.clear(ALARM_PREFIX + uid); } catch (_) {}
+    persistQueue();
+    broadcastQueue();
+    // 尝试启动下一个等待中的任务
+    processQueue();
+  } else if (state === 'waiting' || state === 'active') {
+    QUEUE_STATES.set(uid, 'paused');
+    persistQueue();
+    broadcastQueue();
+  }
+}
+
+// 恢复队列中的任务
+function resumeQueueItem(uid) {
+  const state = QUEUE_STATES.get(uid);
+  if (state === 'paused') {
+    QUEUE_STATES.set(uid, 'waiting');
+    persistQueue();
+    broadcastQueue();
+    processQueue();
+  }
+}
+
+// 广播队列状态
+function broadcastQueue() {
+  broadcast({ type: 'wei_queue', data: getQueueInfo() });
+}
+
+// 处理队列：取出一个等待中的任务开始执行
+function processQueue() {
+  // 如果已有任务在运行，不启动新任务
+  if (QUEUE_RUNNING) return;
+  
+  // 找到第一个 waiting 或 active 的任务
+  for (const uid of QUEUE) {
+    const state = QUEUE_STATES.get(uid);
+    if (state === 'waiting' || state === 'active') {
+      QUEUE_RUNNING = true;
+      QUEUE_STATES.set(uid, 'active');
+      persistQueue();
+      broadcastQueue();
+      // 启动任务
+      startTaskInternal(uid);
+      return;
+    }
+  }
+  
+  // 没有可执行任务
+  broadcastQueue();
+}
+
+// 任务完成后的回调
+function onTaskComplete(uid) {
+  QUEUE_RUNNING = false;
+  dequeueUid(uid);
+  // 启动队列中的下一个任务
+  processQueue();
+}
 
 function removeQueuedFilename(filename) {
   const index = DOWNLOAD_FILENAME_QUEUE.indexOf(filename);
@@ -104,30 +262,42 @@ function nextPageDelayMs(setting) {
 async function fetchJSON(url, params) {
   const usp = new URLSearchParams(params || {});
   const full = usp.toString() ? url + '?' + usp.toString() : url;
+
+  // Read XSRF-TOKEN from weibo.cn cookie
+  let xsrfToken = '';
+  try {
+    const cookie = await new Promise((resolve, reject) => {
+      chrome.cookies.get({ url: 'https://m.weibo.cn', name: 'XSRF-TOKEN' }, c => {
+        if (chrome.runtime.lastError) { resolve(null); return; }
+        resolve(c);
+      });
+    });
+    xsrfToken = (cookie && cookie.value) || '';
+  } catch (_) {}
+
+  const headers = {
+    Accept: 'application/json, text/plain, */*',
+    'X-Requested-With': 'XMLHttpRequest',
+    'MWeibo-Pwa': '1',
+    Referer: 'https://m.weibo.cn/'
+  };
+  if (xsrfToken) {
+    headers['X-XSRF-TOKEN'] = xsrfToken;
+    headers['x-xsrf-token'] = xsrfToken;
+  }
+
   let res;
   try {
     res = await fetch(full, {
       credentials: 'include',
-      referrer: 'https://m.weibo.cn/',
       referrerPolicy: 'strict-origin-when-cross-origin',
-      headers: {
-        Accept: 'application/json, text/plain, */*',
-        'X-Requested-With': 'XMLHttpRequest',
-        'MWeibo-Pwa': '1'
-      }
+      headers: headers
     });
   } catch (e) {
-    // 网络层错误（DNS / 连接被拒 / 超时 等）
     throw new Error('NETWORK: ' + (e.message || 'fetch failed'));
   }
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
-}
-
-function broadcast(message) {
-  try {
-    chrome.runtime.sendMessage(message, () => void chrome.runtime.lastError);
-  } catch (_) {}
 }
 
 function pushProgress(payload) {
@@ -137,6 +307,12 @@ function pushProgress(payload) {
 
 function pushFail(text) {
   broadcast({ type: 'wei_fail', data: text });
+}
+function pushVerify(url, text) {
+  LAST_VERIFY = { url: url, text: text || '微博接口需要验证，请点击以下链接完成验证后重试' };
+  try { chrome.storage.local.set({ wb_verify: LAST_VERIFY }); } catch(_) {}
+  broadcast({ type: 'wei_verify', data: LAST_VERIFY });
+  openCaptchaTab(url);
 }
 
 function escapeHtml(s) {
@@ -270,8 +446,25 @@ async function fetchProfile(uid) {
     containerid: '100505' + uid
   });
   if (!res || res.ok !== 1) {
-    const msg = (res && (res.msg || res.errno)) ? '微博接口拒绝(' + (res.msg || res.errno) + ')，请确认已登录 m.weibo.cn 并重试' : '无法获取用户资料,可能未登录或 UID 无效';
-    throw new Error(msg);
+    const errno = res && res.errno;
+    const msg = (res && (res.msg || res.errno)) ? String(res.msg || res.errno) : '';
+    const captchaUrl = (res && res.url) || '';
+    // -100: captcha/verification needed
+    if (errno === '-100' || errno === -100 || String(errno) === '-100') {
+      const backUrl = encodeURIComponent('https://m.weibo.cn/u/' + uid);
+      const verifyUrl = captchaUrl ? (captchaUrl + backUrl) : ('https://m.weibo.cn/login?backURL=' + backUrl);
+      pushVerify(verifyUrl, '微博需要验证码，请点击链接完成验证后重试');
+      throw new Error('微博需要验证码，请先完成验证');
+    }
+    // Other auth/verify errors (20003, 20010, 20021 etc.)
+    if (errno === 20003 || errno === 20010 || errno === 20021 || (msg && /login|verify|验证|登录/.test(msg))) {
+      const backUrl = encodeURIComponent('https://m.weibo.cn/u/' + uid);
+      const verifyUrl = captchaUrl ? (captchaUrl + backUrl) : ('https://m.weibo.cn/login?backURL=' + backUrl);
+      pushVerify(verifyUrl, '微博接口需要验证，请点击链接登录后重试');
+      throw new Error('微博接口拒绝(' + msg + ')，请先完成验证');
+    }
+    const errText = msg ? '微博接口拒绝(' + msg + ')，请确认已登录 m.weibo.cn 并重试' : '无法获取用户资料,可能未登录或 UID 无效';
+    throw new Error(errText);
   }
   const u = res.data && res.data.userInfo;
   if (!u || !u.id) throw new Error('用户资料不完整');
@@ -293,7 +486,25 @@ async function fetchPage(containerid, page, uid) {
     page_type: '03',
     page: page
   });
-  if (!res || res.ok !== 1) throw new Error('接口返回异常');
+  if (!res || res.ok !== 1) {
+    const errno = res && res.errno;
+    const msg = (res && (res.msg || res.errno)) ? String(res.msg || res.errno) : '';
+    const captchaUrl = (res && res.url) || '';
+    // -100: captcha/verification needed
+    if (errno === '-100' || errno === -100 || String(errno) === '-100') {
+      const backUrl = encodeURIComponent('https://m.weibo.cn/u/' + uid);
+      const verifyUrl = captchaUrl ? (captchaUrl + backUrl) : ('https://m.weibo.cn/login?backURL=' + backUrl);
+      pushVerify(verifyUrl, '微博需要验证码，请点击链接完成验证后重试');
+      throw new Error('微博需要验证码，请先完成验证');
+    }
+    if (errno === 20003 || errno === 20010 || errno === 20021 || (msg && /login|verify|验证|登录/.test(msg))) {
+      const backUrl = encodeURIComponent('https://m.weibo.cn/u/' + uid);
+      const verifyUrl = captchaUrl ? (captchaUrl + backUrl) : ('https://m.weibo.cn/login?backURL=' + backUrl);
+      pushVerify(verifyUrl, '微博接口需要验证，请点击链接登录后重试');
+      throw new Error('微博接口拒绝，请先完成验证');
+    }
+    throw new Error('接口返回异常: ' + (msg || '未知错误'));
+  }
   return res.data || {};
 }
 
@@ -356,11 +567,13 @@ async function runLoop(uid) {
   try {
     data = await fetchPage(task.containerid, task.page, task.uid);
   } catch (err) {
-    // 如果是网络层错误，保留已抓取的微博数不变，仅递增退避重试
-    if (err && err.message && err.message.startsWith('NETWORK:')) {
+    const errMsg = (err && err.message) || '';
+    if (/验证|登录|verify|login/i.test(errMsg)) {
+      pushFail(errMsg || '接口需要验证');
+      pauseQueueItem(uid);
+    } else if (errMsg.startsWith('NETWORK:')) {
       handlePageError(task);
     } else {
-      // 接口业务错误（ok != 1 等）
       handlePageError(task);
     }
     return;
@@ -417,12 +630,11 @@ async function runLoop(uid) {
 }
 
 // 全新开始
-async function startTask(uid, forceRestart) {
-  // 如果该 uid 有未完成任务且未要求强制重启，直接从断点继续
+
+async function startTaskInternal(uid) {
   await restoreTasks();
   const existing = TASKS.get(uid);
-  if (existing && !forceRestart) {
-    // 继续已有任务
+  if (existing) {
     if (existing.stopped) existing.stopped = false;
     if (existing.timer) clearTimeout(existing.timer);
     try {
@@ -438,18 +650,17 @@ async function startTask(uid, forceRestart) {
     return;
   }
 
-  // 清理旧任务
-  if (existing) {
-    if (existing.timer) clearTimeout(existing.timer);
-    existing.stopped = true;
-    TASKS.delete(uid);
-  }
-
   let profile;
   try {
     profile = await fetchProfile(uid);
   } catch (err) {
-    pushFail((err && err.message) || '获取用户失败');
+    const errMsg = (err && err.message) || '获取用户失败';
+    pushFail(errMsg);
+    if (/验证|登录|login|verify/i.test(errMsg)) {
+      pauseQueueItem(uid);
+    } else {
+      onTaskComplete(uid);
+    }
     return;
   }
   const task = {
@@ -472,6 +683,83 @@ async function startTask(uid, forceRestart) {
   runLoop(profile.uid);
 }
 
+async function startTask(uid, forceRestart) {
+  await restoreTasks();
+  await restoreQueue();
+
+  const existing = TASKS.get(uid);
+
+  if (existing && !forceRestart) {
+    enqueueUid(uid);
+    if (!QUEUE_RUNNING) {
+      processQueue();
+    }
+    return;
+  }
+
+  if (existing) {
+    if (existing.timer) clearTimeout(existing.timer);
+    existing.stopped = true;
+    TASKS.delete(uid);
+  }
+
+  let profile;
+  try {
+    profile = await fetchProfile(uid);
+  } catch (err) {
+    const errMsg = (err && err.message) || '获取用户失败';
+    pushFail(errMsg);
+    if (/验证|登录|verify|login/i.test(errMsg)) {
+      pauseQueueItem(uid);
+    }
+    return;
+  }
+
+  const task = {
+    uid: profile.uid,
+    username: profile.username,
+    avatar: profile.avatar,
+    total: profile.total,
+    containerid: profile.containerid,
+    page: 1,
+    num: 0,
+    htmlIndex: 1,
+    retry: 0,
+    cards: [],
+    timer: null,
+    stopped: false
+  };
+  TASKS.set(profile.uid, task);
+  persistTasks();
+  pushProgress({ uid: profile.uid, name: profile.username, avatar: profile.avatar, num: 0, total: profile.total, tip: '已入队' });
+
+  enqueueUid(profile.uid);
+  if (!QUEUE_RUNNING) {
+    processQueue();
+  }
+}
+
+
+
+async function removeQueueItem(uid) {
+  const task = TASKS.get(uid);
+  if (task) {
+    task.stopped = true;
+    if (task.timer) clearTimeout(task.timer);
+    try { await flushTask(task, '_finish'); } catch (_) {}
+    TASKS.delete(uid);
+    clearTaskStore(uid);
+  }
+
+  const state = QUEUE_STATES.get(uid);
+  if (state === 'active') {
+    QUEUE_RUNNING = false;
+  }
+
+  dequeueUid(uid);
+
+  processQueue();
+}
 async function stopAll() {
   for (const [uid, task] of TASKS.entries()) {
     task.stopped = true;
@@ -542,6 +830,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ hasTask: false });
       return false;
     }
+    case 'get_queue':
+      sendResponse(getQueueInfo());
+      return false;
+    case 'get_verify':
+      sendResponse(LAST_VERIFY || null);
+      return false;
+    case 'clear_verify':
+      LAST_VERIFY = null;
+      try { chrome.storage.local.remove('wb_verify'); } catch(_) {}
+      sendResponse('ok');
+      return false;
+    case 'queue_pause': {
+      const uid = request.data && request.data.uid;
+      if (uid) pauseQueueItem(String(uid));
+      sendResponse('ok');
+      return false;
+    }
+    case 'queue_resume': {
+      const uid = request.data && request.data.uid;
+      if (uid) resumeQueueItem(String(uid));
+      sendResponse('ok');
+      return false;
+    }
+    case 'queue_remove': {
+      const uid = request.data && request.data.uid;
+      if (uid) {
+        removeQueueItem(String(uid)).then(() => sendResponse('ok'));
+        return true;
+      }
+      sendResponse('ok');
+      return false;
+    }
     case 'option':
       chrome.runtime.openOptionsPage();
       sendResponse('ok');
@@ -553,9 +873,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 if (chrome.downloads && chrome.downloads.onDeterminingFilename) {
   chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
-    if (!item || !item.url || item.url.indexOf('data:text/html') !== 0) return;
+    // Only handle our own extension's downloads (data:text/html = our backup HTML)
+    if (!item || !item.url || item.url.indexOf('data:text/html') !== 0) {
+      // Not our download - return false to avoid interfering with other extensions
+      return false;
+    }
     const filename = DOWNLOAD_FILENAME_QUEUE.shift();
-    if (!filename) return;
+    if (!filename) {
+      return false;
+    }
+    // Check filename starts with our download directory to avoid conflict
     suggest({ filename: filename, conflictAction: 'uniquify' });
   });
 }
@@ -584,4 +911,17 @@ if (chrome.alarms && chrome.alarms.onAlarm) {
       });
     }
   });
+}
+function broadcast(msg) {
+  try {
+    chrome.runtime.sendMessage(msg).catch(() => {});
+  } catch(e) {
+    // Popup may not be open, ignore
+  }
+}
+
+function openCaptchaTab(url) {
+  try {
+    chrome.tabs.create({ url: url, active: true });
+  } catch(_) {}
 }
