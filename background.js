@@ -244,16 +244,24 @@ function wait(ms) {
 
 function nextPageDelayMs(setting) {
   const configured = parseFloat(setting);
-  const base = Number.isFinite(configured) && configured >= 0 ? configured : 1.2;
-  const min = Math.max(0.35, base * 0.2);
-  const max = Math.max(0.65, base * 0.9);
+  // 基础间隔至少 3 秒，默认 5 秒（可在选项页调节）
+  const base = Number.isFinite(configured) && configured >= 2 ? configured : 5;
+  // 大幅随机抖动：2~12 秒
+  const min = 2;
+  const max = Math.max(base + 5, 8);
   let seconds = randomBetween(min, max);
-  const roll = Math.random();
 
-  if (roll < 0.08) {
-    seconds += randomBetween(1.6, 4.8);
-  } else if (roll < 0.24) {
-    seconds += randomBetween(0.4, 1.3);
+  // 随机额外暂停模拟人类浏览行为
+  const roll = Math.random();
+  if (roll < 0.04) {
+    // 4% 概率：超长停顿（走神或翻看内容）
+    seconds += randomBetween(10, 25);
+  } else if (roll < 0.12) {
+    // 8% 概率：中长停顿
+    seconds += randomBetween(4, 10);
+  } else if (roll < 0.30) {
+    // 18% 概率：短停顿
+    seconds += randomBetween(1.5, 4);
   }
 
   return Math.round(seconds * 1000);
@@ -531,12 +539,12 @@ async function maybeExpandLong(mblog) {
 }
 
 async function expandLongTexts(mblogs) {
-  const batchSize = 3;
+  const batchSize = 2;
   for (let i = 0; i < mblogs.length; i += batchSize) {
     const batch = mblogs.slice(i, i + batchSize);
     await Promise.all(batch.map(m => maybeExpandLong(m).catch(() => {})));
     if (i + batchSize < mblogs.length) {
-      await wait(randomBetween(80, 260));
+      await wait(randomBetween(500, 1500));
     }
   }
 }
@@ -545,9 +553,10 @@ async function expandLongTexts(mblogs) {
 // 根据已重试次数计算下次重试等待分钟数（递增退避）
 function nextRetryMinutes(task) {
   // retry 从 0 开始计数。第 0 次网络异常 → 等 1 分钟，第 1 次 → 2 分，第 2 次 → 4 分，最多 30 分钟
-  const backoff = [1, 2, 4, 8, 15, 30];
+  const backoff = [5, 10, 20, 30, 60, 120];
   const idx = Math.min(task.retry || 0, backoff.length - 1);
-  return backoff[idx];
+  const mins = backoff[idx];
+  return Math.round(mins * (1 + Math.random() * 0.3));
 }
 
 // 网络失败 / 接口异常 统一处理
@@ -562,6 +571,13 @@ function handlePageError(task) {
 async function runLoop(uid) {
   const task = TASKS.get(uid);
   if (!task || task.stopped) return;
+
+  // 初始随机延迟（首次 2~6s，后续 0.5~2s）
+  if (task.page === 1) {
+    await wait(randomBetween(2000, 6000));
+  } else {
+    await wait(randomBetween(500, 2000));
+  }
 
   let data;
   try {
@@ -646,6 +662,7 @@ async function startTaskInternal(uid) {
       persistTasks();
     } catch (_) {}
     pushProgress({ uid: uid, name: existing.username, avatar: existing.avatar, num: existing.num, total: existing.total, tip: '继续备份中' });
+    await wait(randomBetween(2000, 5000));
     runLoop(uid);
     return;
   }
@@ -680,6 +697,7 @@ async function startTaskInternal(uid) {
   TASKS.set(profile.uid, task);
   persistTasks();
   pushProgress({ uid: profile.uid, name: profile.username, avatar: profile.avatar, num: 0, total: profile.total, tip: '开始' });
+  await wait(randomBetween(2000, 5000));
   runLoop(profile.uid);
 }
 
