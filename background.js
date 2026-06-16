@@ -523,6 +523,14 @@ async function fetchPage(containerid, page, uid) {
       pushVerify(verifyUrl, '微博接口需要验证，请点击链接登录后重试');
       throw new Error('微博接口拒绝，请先完成验证');
     }
+    // ok===0 with empty cards means user has no more posts - mark complete
+    if (res && res.ok === 0) {
+      const pageData = res.data || {};
+      const pageCards = (pageData.cards || []).filter(c => c && c.card_type === 9 && c.mblog);
+      if (pageCards.length === 0) {
+        return { __COMPLETE: true, cards: [] };
+      }
+    }
     throw new Error('接口返回异常: ' + (msg || '未知错误'));
   }
   return res.data || {};
@@ -609,10 +617,31 @@ async function runLoop(uid) {
 
   if (task.stopped) return; // 可能在等待期间被结束
 
+    // fetchPage signals completion when ok===0 with no more content
+  if (data && data.__COMPLETE) {
+    await flushTask(task, '_finish');
+    pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '完成' });
+    task.stopped = true;
+    TASKS.delete(uid);
+    clearTaskStore(uid);
+    onTaskComplete(uid);
+    return;
+  }
+
   const cards = (data.cards || []).filter(c => c && c.card_type === 9 && c.mblog);
   if (data.cardlistInfo && data.cardlistInfo.total) task.total = data.cardlistInfo.total;
 
   if (cards.length === 0) {
+    // ok===0 + msg '这里还没有内容' means user has no more posts
+    if (res && res.ok === 0) {
+      await flushTask(task, '_finish');
+      pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '完成' });
+      task.stopped = true;
+      TASKS.delete(uid);
+      clearTaskStore(uid);
+      onTaskComplete(uid);
+      return;
+    }
     task.retry += 1;
     const finishPer = task.total ? task.num / task.total : 1;
     if (
