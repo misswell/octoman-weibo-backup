@@ -1,4 +1,4 @@
-﻿// MV3 service worker: 直接抓 m.weibo.cn 接口, 组合 HTML 并通过 chrome.downloads 保存
+// MV3 service worker: 直接抓 m.weibo.cn 接口, 组合 HTML 并通过 chrome.downloads 保存
 
 importScripts('utils/config.js');
 

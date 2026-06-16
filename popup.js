@@ -1,4 +1,4 @@
-﻿ function $(sel) { return document.querySelector(sel); }
+ function $(sel) { return document.querySelector(sel); }
  
  function send(type, data) {
    return new Promise(resolve => {
@@ -207,9 +207,11 @@
     html += '  <span class="' + tipClass + '">' + active.tip + '</span>';
   }
   el.innerHTML = html;
-  el.style.display = '';
-}function refreshQueue() {
-   send('get_queue').then(data => {
+  el.style.display = 'block';
+}
+
+function refreshQueue() {
+   return send('get_queue').then(data => {
      queueData = data && data.items || [];
      renderQueueList(queueData);
      renderActiveStep(queueData);
