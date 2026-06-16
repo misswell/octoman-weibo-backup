@@ -1,4 +1,4 @@
- function $(sel) { return document.querySelector(sel); }
+﻿ function $(sel) { return document.querySelector(sel); }
  
  function send(type, data) {
    return new Promise(resolve => {
@@ -153,7 +153,6 @@
        '<div class="queue-bar-wrap"><div class="queue-bar" style="width:' + pct + '%"></div></div>' +
      '</div>' +
      '<span class="queue-count">' + item.num + ' / ' + (item.total || '-') + '</span>' +
-     (item.step ? '<span class="queue-step">' + item.step + '</span>' : '') + (item.tip ? '<span class="queue-tip">' + item.tip + '</span>' : '') +
      '<div class="queue-actions">' + actions + '</div>' +
    '</div>';
  }
@@ -190,10 +189,30 @@
    });
  }
  
- function refreshQueue() {
+ function renderActiveStep(items) {
+  var el = document.getElementById('active-step');
+  if (!el) return;
+  var active = null;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].state === 'active') { active = items[i]; break; }
+  }
+  if (!active) {
+    el.textContent = '';
+    el.style.display = 'none';
+    return;
+  }
+  var text = (active.username || active.uid);
+  if (active.step) text += '  ' + active.step;
+  if (active.tip) text += '  ' + active.tip;
+  el.textContent = text;
+  el.style.display = '';
+}
+
+function refreshQueue() {
    send('get_queue').then(data => {
      queueData = data && data.items || [];
      renderQueueList(queueData);
+     renderActiveStep(queueData);
    });
  }
  
@@ -321,6 +340,7 @@
           hint.innerHTML = (data || '请求失败') + ' <a href="' + verifyUrl + '" target="_blank" style="color:#e8642d;text-decoration:underline;font-weight:600;">点击打开验证码</a>';
         }
       });
+      refreshQueue();
     } else if (res.type === 'wei_verify') {
       var vdata = res.data || {};
       var verifyUrl = vdata.url || 'https://m.weibo.cn/';

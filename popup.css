@@ -1,4 +1,4 @@
-/* === Reset & Base === */
+﻿/* === Reset & Base === */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -420,6 +420,36 @@ body {
 }
 .queue-tip { font-size: 10px; color: #999; white-space: nowrap; flex-shrink: 0; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
 .queue-empty { font-size: 11px; color: #999; text-align: center; padding: 12px 0; }
+/* === Active Step Panel === */
+.active-step-panel {
+  margin: 0 12px 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #555;
+  min-height: 36px;
+  display: none;
+}
+.active-step-panel.is-visible { display: block; }
+.active-step-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 2px;
+}
+.active-step-detail {
+  color: #888;
+  font-size: 11px;
+  word-break: break-all;
+}
+.active-step-detail .step-label {
+  color: #e8642d;
+  font-weight: 600;
+}
+.active-step-detail .tip-label {
+  color: #666;
+}
 /* === Verify Banner === */
 .verify-banner {
   margin: 8px 12px 0;
