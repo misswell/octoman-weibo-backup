@@ -197,18 +197,18 @@
     if (items[i].state === 'active') { active = items[i]; break; }
   }
   if (!active) {
-    el.textContent = '';
     el.style.display = 'none';
     return;
   }
-  var text = (active.username || active.uid);
-  if (active.step) text += '  ' + active.step;
-  if (active.tip) text += '  ' + active.tip;
-  el.textContent = text;
+  var html = '<span class="step-user">' + (active.username || active.uid) + '</span>';
+  if (active.step) html += '  <span class="step-label">' + active.step + '</span>';
+  if (active.tip) {
+    var tipClass = (active.tip.indexOf('失败') >= 0 || active.tip.indexOf('验证') >= 0) ? 'step-error' : 'step-tip';
+    html += '  <span class="' + tipClass + '">' + active.tip + '</span>';
+  }
+  el.innerHTML = html;
   el.style.display = '';
-}
-
-function refreshQueue() {
+}function refreshQueue() {
    send('get_queue').then(data => {
      queueData = data && data.items || [];
      renderQueueList(queueData);
