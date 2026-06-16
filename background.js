@@ -931,17 +931,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 if (chrome.downloads && chrome.downloads.onDeterminingFilename) {
   chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
-    // Only handle our own extension's downloads (data:text/html = our backup HTML)
-    if (!item || !item.url || item.url.indexOf('data:text/html') !== 0) {
-      // Not our download - return false to avoid interfering with other extensions
-      return false;
+    // Only intercept our own data:text/html downloads
+    if (item && item.url && item.url.indexOf('data:text/html') === 0) {
+      const filename = DOWNLOAD_FILENAME_QUEUE.shift();
+      if (filename) {
+        suggest({ filename: filename, conflictAction: 'uniquify' });
+        return;
+      }
     }
-    const filename = DOWNLOAD_FILENAME_QUEUE.shift();
-    if (!filename) {
-      return false;
-    }
-    // Check filename starts with our download directory to avoid conflict
-    suggest({ filename: filename, conflictAction: 'uniquify' });
+    // For all other downloads (including other extensions'), use default filename
+    suggest({ filename: item.filename });
   });
 }
 
