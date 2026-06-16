@@ -17,6 +17,7 @@ const DOWNLOAD_FILENAME_QUEUE = [];
 let QUEUE = [];
 let QUEUE_STATES = new Map();
 let QUEUE_RUNNING = false;
+let QUEUE_INITIALIZED = false;
 
 
 
@@ -59,13 +60,15 @@ async function restoreQueue() {
           }
         }
       }
-      // Recover QUEUE_RUNNING from stored state
-      // Service worker restarted: all previous tasks are actually stopped.
-      // Set them all to 'paused' so user can manually resume.
-      for (const uid of QUEUE) {
-        QUEUE_STATES.set(uid, 'paused');
+      if (!QUEUE_INITIALIZED) {
+        // First restore after service worker restart: tasks are actually stopped.
+        // Set them all to 'paused' so user can manually resume.
+        for (const uid of QUEUE) {
+          QUEUE_STATES.set(uid, 'paused');
+        }
+        QUEUE_INITIALIZED = true;
       }
-      QUEUE_RUNNING = false;
+      QUEUE_RUNNING = hasActiveTask();
       resolve();
     });
   });
@@ -858,6 +861,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return false;
     }
     case 'get_queue':
+      if (QUEUE_INITIALIZED) {
+        sendResponse(getQueueInfo());
+        return false;
+      }
       restoreQueue().then(() => {
         restoreTasks().then(() => {
           sendResponse(getQueueInfo());
