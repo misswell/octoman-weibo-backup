@@ -633,35 +633,14 @@ async function runLoop(uid) {
   if (data.cardlistInfo && data.cardlistInfo.total) task.total = data.cardlistInfo.total;
 
   if (cards.length === 0) {
-    // ok===0 + msg '这里还没有内容' means user has no more posts
-    if (res && res.ok === 0) {
-      await flushTask(task, '_finish');
-      pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '完成' });
-      task.stopped = true;
-      TASKS.delete(uid);
-      clearTaskStore(uid);
-      onTaskComplete(uid);
-      return;
-    }
-    task.retry += 1;
-    const finishPer = task.total ? task.num / task.total : 1;
-    if (
-      task.retry >= 5 ||
-      (task.retry === 4 && finishPer > 0.85) ||
-      (task.retry === 3 && finishPer > 0.9) ||
-      (task.retry === 2 && finishPer > 0.92) ||
-      (task.retry === 1 && finishPer > 0.95)
-    ) {
-      await flushTask(task, '_finish');
-      pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '完成' });
-      task.stopped = true;
-      TASKS.delete(uid);
-      clearTaskStore(uid);
-    } else {
-      const mins = nextRetryMinutes(task);
-      pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: mins + '分钟后重试（第' + task.retry + '次）' });
-      scheduleRetry(uid, mins);
-    }
+    // No more post cards (card_type===9) — all visible posts downloaded
+    // This covers: ok===0 with empty cards, or ok===1 with only non-post cards (e.g. card_type:58 notice)
+    await flushTask(task, '_finish');
+    pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '完成' });
+    task.stopped = true;
+    TASKS.delete(uid);
+    clearTaskStore(uid);
+    onTaskComplete(uid);
     return;
   }
 
