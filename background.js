@@ -244,23 +244,17 @@ function wait(ms) {
 
 function nextPageDelayMs(setting) {
   const configured = parseFloat(setting);
-  // 基础间隔至少 3 秒，默认 5 秒（可在选项页调节）
-  const base = Number.isFinite(configured) && configured >= 2 ? configured : 5;
-  // 大幅随机抖动：2~12 秒
-  const min = 2;
-  const max = Math.max(base + 5, 8);
-  let seconds = randomBetween(min, max);
+  const base = Number.isFinite(configured) && configured >= 5 ? configured : 5;
+  // 核心间隔 5~9 秒，绝不低于 5 秒
+  let seconds = randomBetween(base, base + 4);
 
   // 随机额外暂停模拟人类浏览行为
   const roll = Math.random();
   if (roll < 0.04) {
-    // 4% 概率：超长停顿（走神或翻看内容）
     seconds += randomBetween(10, 25);
   } else if (roll < 0.12) {
-    // 8% 概率：中长停顿
     seconds += randomBetween(4, 10);
   } else if (roll < 0.30) {
-    // 18% 概率：短停顿
     seconds += randomBetween(1.5, 4);
   }
 
