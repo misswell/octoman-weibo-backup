@@ -172,16 +172,19 @@
    document.querySelectorAll('.btn-pause').forEach(btn => {
      btn.addEventListener('click', function() {
        send('queue_pause', { uid: this.dataset.uid });
+      setTimeout(refreshQueue, 300);
      });
    });
    document.querySelectorAll('.btn-resume').forEach(btn => {
      btn.addEventListener('click', function() {
        send('queue_resume', { uid: this.dataset.uid });
+      setTimeout(refreshQueue, 300);
      });
    });
    document.querySelectorAll('.btn-remove').forEach(btn => {
      btn.addEventListener('click', function() {
        send('queue_remove', { uid: this.dataset.uid });
+      setTimeout(refreshQueue, 300);
      });
    });
  }
