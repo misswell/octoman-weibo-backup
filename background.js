@@ -21,6 +21,14 @@ let QUEUE_RUNNING = false;
 
 
 // 保存队列状态
+// Check if any queue item is currently active
+function hasActiveTask() {
+  for (const uid of QUEUE) {
+    if (QUEUE_STATES.get(uid) === 'active') return true;
+  }
+  return false;
+}
+
 function persistQueue() {
   try {
     const dump = {
@@ -51,6 +59,18 @@ async function restoreQueue() {
           }
         }
       }
+      // Recover QUEUE_RUNNING from stored state
+      QUEUE_RUNNING = hasActiveTask();
+      // If service worker restarted, demote stale 'active' to 'waiting'
+      if (QUEUE_RUNNING) {
+        for (const uid of QUEUE) {
+          if (QUEUE_STATES.get(uid) === 'active') {
+            // Will be set to active by processQueue when it's this item's turn
+            QUEUE_STATES.set(uid, 'waiting');
+          }
+        }
+        QUEUE_RUNNING = false;
+      }
       resolve();
     });
   });
@@ -77,7 +97,7 @@ function getQueueInfo() {
 function enqueueUid(uid) {
   if (!QUEUE.includes(uid)) {
     QUEUE.push(uid);
-    QUEUE_STATES.set(uid, QUEUE_RUNNING ? 'waiting' : 'active');
+    QUEUE_STATES.set(uid, hasActiveTask() ? 'waiting' : 'active');
     persistQueue();
     broadcastQueue();
   }
@@ -703,7 +723,7 @@ async function startTask(uid, forceRestart) {
 
   if (existing && !forceRestart) {
     enqueueUid(uid);
-    if (!QUEUE_RUNNING) {
+    if (!hasActiveTask()) {
       processQueue();
     }
     return;
@@ -746,7 +766,7 @@ async function startTask(uid, forceRestart) {
   pushProgress({ uid: profile.uid, name: profile.username, avatar: profile.avatar, num: 0, total: profile.total, tip: '已入队' });
 
   enqueueUid(profile.uid);
-  if (!QUEUE_RUNNING) {
+  if (!hasActiveTask()) {
     processQueue();
   }
 }
