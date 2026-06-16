@@ -66,7 +66,6 @@ async function restoreQueue() {
         QUEUE_STATES.set(uid, 'paused');
       }
       QUEUE_RUNNING = false;
-      }
       resolve();
     });
   });
