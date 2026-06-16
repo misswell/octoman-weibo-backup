@@ -608,8 +608,6 @@ async function runLoop(uid) {
   // 初始随机延迟（首次 2~6s，后续 0.5~2s）
   if (task.page === 1) {
     await wait(randomBetween(2000, 6000));
-  } else {
-    await wait(randomBetween(500, 2000));
   }
 
   let data;
@@ -698,7 +696,6 @@ async function startTaskInternal(uid) {
       persistTasks();
     } catch (_) {}
     pushProgress({ uid: uid, name: existing.username, avatar: existing.avatar, num: existing.num, total: existing.total, tip: '继续备份中', step: '获取资料' });
-    await wait(randomBetween(2000, 5000));
     runLoop(uid);
     return;
   }
@@ -733,7 +730,6 @@ async function startTaskInternal(uid) {
   TASKS.set(profile.uid, task);
   persistTasks();
   pushProgress({ uid: profile.uid, name: profile.username, avatar: profile.avatar, num: 0, total: profile.total, tip: '开始', step: '获取资料' });
-  await wait(randomBetween(2000, 5000));
   runLoop(profile.uid);
 }
 
