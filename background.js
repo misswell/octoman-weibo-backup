@@ -60,16 +60,12 @@ async function restoreQueue() {
         }
       }
       // Recover QUEUE_RUNNING from stored state
-      QUEUE_RUNNING = hasActiveTask();
-      // If service worker restarted, demote stale 'active' to 'waiting'
-      if (QUEUE_RUNNING) {
-        for (const uid of QUEUE) {
-          if (QUEUE_STATES.get(uid) === 'active') {
-            // Will be set to active by processQueue when it's this item's turn
-            QUEUE_STATES.set(uid, 'waiting');
-          }
-        }
-        QUEUE_RUNNING = false;
+      // Service worker restarted: all previous tasks are actually stopped.
+      // Set them all to 'paused' so user can manually resume.
+      for (const uid of QUEUE) {
+        QUEUE_STATES.set(uid, 'paused');
+      }
+      QUEUE_RUNNING = false;
       }
       resolve();
     });
