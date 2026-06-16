@@ -526,8 +526,9 @@ async function fetchPage(containerid, page, uid) {
     // ok===0 with empty cards means user has no more posts - mark complete
     if (res && res.ok === 0) {
       const pageData = res.data || {};
-      const pageCards = (pageData.cards || []).filter(c => c && c.card_type === 9 && c.mblog);
-      if (pageCards.length === 0) {
+      const rawCards = pageData.cards;
+      // Only mark complete when cards is an actual empty array (not missing/undefined)
+      if (Array.isArray(rawCards) && rawCards.length === 0) {
         return { __COMPLETE: true, cards: [] };
       }
     }
