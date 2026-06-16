@@ -244,9 +244,9 @@ function wait(ms) {
 
 function nextPageDelayMs(setting) {
   const configured = parseFloat(setting);
-  const base = Number.isFinite(configured) && configured >= 5 ? configured : 5;
-  // 核心间隔 5~9 秒，绝不低于 5 秒
-  let seconds = randomBetween(base, base + 4);
+  const base = Number.isFinite(configured) && configured >= 1 ? configured : 4;
+  // 核心间隔：base * 0.7 ~ base * 1.3，不低于 base 的一半
+  let seconds = randomBetween(base * 0.7, base * 1.3);
 
   // 随机额外暂停模拟人类浏览行为
   const roll = Math.random();
