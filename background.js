@@ -1,4 +1,4 @@
-// MV3 service worker: 直接抓 m.weibo.cn 接口, 组合 HTML 并通过 chrome.downloads 保存
+﻿// MV3 service worker: 直接抓 m.weibo.cn 接口, 组合 HTML 并通过 chrome.downloads 保存
 
 importScripts('utils/config.js');
 
@@ -843,8 +843,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return false;
     }
     case 'get_queue':
-      sendResponse(getQueueInfo());
-      return false;
+      restoreQueue().then(() => {
+        restoreTasks().then(() => {
+          sendResponse(getQueueInfo());
+        });
+      });
+      return true; // async
     case 'get_verify':
       sendResponse(LAST_VERIFY || null);
       return false;

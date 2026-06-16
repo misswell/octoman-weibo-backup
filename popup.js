@@ -1,4 +1,4 @@
- function $(sel) { return document.querySelector(sel); }
+﻿ function $(sel) { return document.querySelector(sel); }
  
  function send(type, data) {
    return new Promise(resolve => {
@@ -222,7 +222,11 @@
  
  document.addEventListener('DOMContentLoaded', async function () {
   await prefillUid();
-  refreshQueue();
+  await refreshQueue();
+  // Restore task states for existing queue items
+  for (const item of queueData) {
+    if (item.uid) checkExistingTask(item.uid);
+  }
   // Check for pending verification from background
   send('get_verify').then(v => { if (v && v.url) showVerifyBanner(v.url, v.text); });
 
