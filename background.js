@@ -85,7 +85,9 @@ function getQueueInfo() {
       avatar: (t && t.avatar) || '',
       total: (t && t.total) || 0,
       num: (t && t.num) || 0,
-      state: state
+      state: state,
+      tip: (t && t.tip) || '',
+      step: (t && t.step) || ''
     };
   });
   return { items: items, running: QUEUE_RUNNING };
@@ -205,7 +207,9 @@ function persistTasks() {
         htmlIndex: t.htmlIndex,
         retry: t.retry,
         cards: t.cards,
-        stopped: !!t.stopped
+        stopped: !!t.stopped,
+        tip: t.tip || '',
+        step: t.step || ''
       };
     }
     if (chrome.storage && chrome.storage.local) {
@@ -322,6 +326,13 @@ async function fetchJSON(url, params) {
 
 function pushProgress(payload) {
   LAST_PROGRESS = payload;
+  if (payload && payload.uid) {
+    const t = TASKS.get(payload.uid);
+    if (t) {
+      t.tip = payload.tip || '';
+      t.step = payload.step || '';
+    }
+  }
   broadcast({ type: 'wei_process', data: payload });
 }
 
@@ -585,13 +596,14 @@ function handlePageError(task) {
   task.retry = (task.retry || 0) + 1;
   const mins = nextRetryMinutes(task);
   const tip = mins + '分钟后自动重试（第' + task.retry + '次）';
-  pushProgress({ uid: task.uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: tip });
+  pushProgress({ uid: task.uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: tip, step: '等待重试' });
   scheduleRetry(task.uid, mins);
 }
 
 async function runLoop(uid) {
   const task = TASKS.get(uid);
   if (!task || task.stopped) return;
+  task.step = '准备请求第' + task.page + '页';
 
   // 初始随机延迟（首次 2~6s，后续 0.5~2s）
   if (task.page === 1) {
@@ -607,10 +619,13 @@ async function runLoop(uid) {
     const errMsg = (err && err.message) || '';
     if (/验证|登录|verify|login/i.test(errMsg)) {
       pushFail(errMsg || '接口需要验证');
+      task.step = '需要验证';
       pauseQueueItem(uid);
     } else if (errMsg.startsWith('NETWORK:')) {
+      task.step = '网络异常';
       handlePageError(task);
     } else {
+      task.step = '请求失败';
       handlePageError(task);
     }
     return;
@@ -660,7 +675,7 @@ async function runLoop(uid) {
     await flushTask(task, '');
   }
 
-  pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '下载中' });
+  pushProgress({ uid: uid, name: task.username, avatar: task.avatar, num: task.num, total: task.total, tip: '下载中', step: '第' + task.page + '页' });
 
   persistTasks();
   task.timer = setTimeout(() => runLoop(uid), nextPageDelayMs(opts.DELAY_PAGE));
@@ -682,7 +697,7 @@ async function startTaskInternal(uid) {
       existing.containerid = profile.containerid || existing.containerid;
       persistTasks();
     } catch (_) {}
-    pushProgress({ uid: uid, name: existing.username, avatar: existing.avatar, num: existing.num, total: existing.total, tip: '继续备份中' });
+    pushProgress({ uid: uid, name: existing.username, avatar: existing.avatar, num: existing.num, total: existing.total, tip: '继续备份中', step: '获取资料' });
     await wait(randomBetween(2000, 5000));
     runLoop(uid);
     return;
@@ -717,7 +732,7 @@ async function startTaskInternal(uid) {
   };
   TASKS.set(profile.uid, task);
   persistTasks();
-  pushProgress({ uid: profile.uid, name: profile.username, avatar: profile.avatar, num: 0, total: profile.total, tip: '开始' });
+  pushProgress({ uid: profile.uid, name: profile.username, avatar: profile.avatar, num: 0, total: profile.total, tip: '开始', step: '获取资料' });
   await wait(randomBetween(2000, 5000));
   runLoop(profile.uid);
 }
@@ -770,7 +785,7 @@ async function startTask(uid, forceRestart) {
   };
   TASKS.set(profile.uid, task);
   persistTasks();
-  pushProgress({ uid: profile.uid, name: profile.username, avatar: profile.avatar, num: 0, total: profile.total, tip: '已入队' });
+  pushProgress({ uid: profile.uid, name: profile.username, avatar: profile.avatar, num: 0, total: profile.total, tip: '已入队', step: '获取资料' });
 
   enqueueUid(profile.uid);
   if (!hasActiveTask()) {

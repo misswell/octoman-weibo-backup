@@ -1,4 +1,4 @@
-﻿ function $(sel) { return document.querySelector(sel); }
+ function $(sel) { return document.querySelector(sel); }
  
  function send(type, data) {
    return new Promise(resolve => {
@@ -153,6 +153,7 @@
        '<div class="queue-bar-wrap"><div class="queue-bar" style="width:' + pct + '%"></div></div>' +
      '</div>' +
      '<span class="queue-count">' + item.num + ' / ' + (item.total || '-') + '</span>' +
+     (item.step ? '<span class="queue-step">' + item.step + '</span>' : '') + (item.tip ? '<span class="queue-tip">' + item.tip + '</span>' : '') +
      '<div class="queue-actions">' + actions + '</div>' +
    '</div>';
  }

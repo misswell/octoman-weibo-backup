@@ -418,6 +418,7 @@ body {
   color: #333;
   border-color: #999;
 }
+.queue-tip { font-size: 10px; color: #999; white-space: nowrap; flex-shrink: 0; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
 .queue-empty { font-size: 11px; color: #999; text-align: center; padding: 12px 0; }
 /* === Verify Banner === */
 .verify-banner {
