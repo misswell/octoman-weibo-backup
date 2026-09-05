@@ -90,3 +90,9 @@ v0.1.6
 
 v0.1.5
 - 修复了部分用户最后一个html无法存档且无限增量的BUG、增加立即停止功能。
+
+---
+
+## 👨‍💻 作者的其他开源项目
+
+**[MacPilot](https://github.com/misswell/MacPilot)** —— 开源 macOS 菜单栏效率工具箱（Swift 原生 · 零第三方依赖）：应用自动退出规则、BLE 靠近解锁、窗口切换器、剪贴板历史、平滑滚动、画中画、录屏、截图贴图等 11 合 1，Apple 公证签名，[免费下载](https://github.com/misswell/MacPilot/releases/latest)。觉得有用欢迎点个 Star ⭐
